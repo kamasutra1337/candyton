@@ -1,0 +1,9 @@
+{
+  "name": "@candyton/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TON smart contracts (Jetton, NFT, staking, escrow) — Phase 4. Scaffold only.",
+  "scripts": {
+    "build": "echo 'Contracts not implemented yet — see README.md for the Phase 4 plan.'"
+  }
+}
