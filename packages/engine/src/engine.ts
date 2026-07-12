@@ -13,6 +13,7 @@ import { RAINBOW } from './types.js';
 import { makeRng, type Rng } from './rng.js';
 import { areAdjacent, createBoard, posKey, tileAt } from './board.js';
 import { findMatches, type MatchGroup } from './matching.js';
+import { hasValidMove } from './solver.js';
 
 const BASE_SCORE = 20;
 const SPECIAL_BONUS = 60;
@@ -58,6 +59,37 @@ export class Match3Engine {
 
   getBoard(): Board {
     return this.board;
+  }
+
+  /** Booster: grant extra moves (typically bought with coins). */
+  grantMoves(n: number): void {
+    if (this.status !== 'playing') return;
+    this.movesLeft += n;
+  }
+
+  /**
+   * Booster: reshuffle the existing tiles into a fresh arrangement that has no
+   * standing matches and at least one legal move, so the player is never stuck.
+   */
+  shuffle(): void {
+    const tiles: Tile[] = [];
+    for (let r = 0; r < this.board.rows; r++)
+      for (let c = 0; c < this.board.cols; c++) {
+        const t = this.board.cells[r]![c];
+        if (t) tiles.push(t);
+      }
+    for (let attempt = 0; attempt < 100; attempt++) {
+      for (let i = tiles.length - 1; i > 0; i--) {
+        const j = this.rng.int(i + 1);
+        const tmp = tiles[i]!;
+        tiles[i] = tiles[j]!;
+        tiles[j] = tmp;
+      }
+      let idx = 0;
+      for (let r = 0; r < this.board.rows; r++)
+        for (let c = 0; c < this.board.cols; c++) this.board.cells[r]![c] = tiles[idx++]!;
+      if (findMatches(this.board).length === 0 && hasValidMove(this.board)) return;
+    }
   }
 
   getState(): GameState {

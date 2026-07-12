@@ -169,10 +169,13 @@ export class CanvasBoard {
 
   // --- step playback ------------------------------------------------------
 
-  async playSteps(steps: Step[]): Promise<void> {
+  async playSteps(steps: Step[], onStep?: (step: Step, index: number) => void): Promise<void> {
     this.busy = true;
     this.selected = null;
-    for (const step of steps) await this.playStep(step);
+    for (let i = 0; i < steps.length; i++) {
+      onStep?.(steps[i]!, i);
+      await this.playStep(steps[i]!);
+    }
     this.busy = false;
   }
 

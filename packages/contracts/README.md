@@ -1,6 +1,11 @@
-# @candyton/contracts — TON Smart Contracts (Phase 4)
+# @candyton/contracts — TON Smart Contracts (parked)
 
-> **Status: scaffold + plan.** No contracts are deployed. This document is the
+> **Status: designed, PARKED by decision.** The project is currently focused on
+> the game itself; the Web3/TON layer is intentionally deferred. The client no
+> longer bundles any wallet/TON code (it was tree-shaken out). This document is
+> the preserved design so the work can resume cleanly later.
+>
+> No contracts are deployed. This document is the
 > spec for Phase 4 so the work can start from a clear brief. Nothing here is
 > wired into the running game yet — the client's `$CANDY` balance is an
 > off-chain ledger (`apps/game/src/state/store.ts`) precisely so there is zero

@@ -54,6 +54,8 @@ export interface LevelConfig {
   colors: number;
   moves: number;
   objectives: Objective[];
+  /** Score thresholds for a 1/2/3-star rating on completion. */
+  starScores?: [number, number, number];
   /** Deterministic seed so a level is reproducible for tests and replays. */
   seed: number;
 }

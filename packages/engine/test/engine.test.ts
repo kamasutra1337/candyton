@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Match3Engine } from '../src/engine.js';
-import { getLevel, LEVELS } from '../src/levels.js';
+import { getLevel, LEVELS, starsForScore } from '../src/levels.js';
 import { findHint, hasValidMove } from '../src/solver.js';
 import { findMatches } from '../src/matching.js';
 import type { LevelConfig, Pos } from '../src/types.js';
@@ -94,6 +94,33 @@ describe('Match3Engine swaps', () => {
       expect(isFull(e.getBoard())).toBe(true);
       expect(e.getState().score).toBeGreaterThanOrEqual(prevScore);
     }
+  });
+});
+
+describe('Match3Engine boosters', () => {
+  it('grants extra moves while playing', () => {
+    const e = new Match3Engine(level1);
+    const before = e.getState().movesLeft;
+    e.grantMoves(5);
+    expect(e.getState().movesLeft).toBe(before + 5);
+  });
+
+  it('reshuffles into a solvable board with no standing matches', () => {
+    const e = new Match3Engine(level1);
+    e.shuffle();
+    expect(isFull(e.getBoard())).toBe(true);
+    expect(findMatches(e.getBoard())).toHaveLength(0);
+    expect(hasValidMove(e.getBoard())).toBe(true);
+  });
+});
+
+describe('star rating', () => {
+  it('awards stars by score thresholds', () => {
+    const lvl = getLevel(1)!; // starScores [2000, 3500, 5000]
+    expect(starsForScore(lvl, 1000)).toBe(0);
+    expect(starsForScore(lvl, 2000)).toBe(1);
+    expect(starsForScore(lvl, 3600)).toBe(2);
+    expect(starsForScore(lvl, 9000)).toBe(3);
   });
 });
 

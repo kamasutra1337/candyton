@@ -366,8 +366,131 @@ body {
   }
 }
 
-/* TON Connect button spacing */
-.ton-btn {
-  transform: scale(0.92);
-  transform-origin: right center;
+/* Header pills */
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.icon-btn.small {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+
+/* Stars */
+.stars-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.star {
+  font-size: 40px;
+  color: rgba(255, 255, 255, 0.18);
+  transition: color 0.3s ease;
+}
+.star.lit {
+  color: var(--gold);
+  text-shadow: 0 0 14px rgba(255, 210, 87, 0.7);
+}
+.star.sm {
+  font-size: 15px;
+}
+.card-stars {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  align-self: flex-start;
+}
+
+/* Booster bar */
+.booster-bar {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+.booster {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.booster:active {
+  transform: scale(0.96);
+}
+.booster:disabled {
+  opacity: 0.45;
+}
+.booster.poor {
+  opacity: 0.6;
+}
+.booster-icon {
+  font-size: 20px;
+}
+.booster-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+.booster-cost {
+  font-size: 11px;
+  color: var(--gold);
+  font-weight: 700;
+}
+.booster-cost.free {
+  color: var(--good);
+}
+
+/* Modal actions */
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.modal-actions .btn {
+  flex: 1;
+}
+.btn.ghost {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+}
+
+/* Onboarding */
+.onboarding-body {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 4px 0 16px;
+}
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+.dot.active {
+  background: var(--accent);
+  width: 20px;
+  border-radius: 4px;
+  transition: width 0.2s ease;
 }

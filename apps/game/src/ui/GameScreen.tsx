@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { getLevel, type GameState } from '@candyton/engine';
-import { GameController } from '../game/GameController';
+import { GameController, type RecordedMove } from '../game/GameController';
 import { useStore } from '../state/store';
+import { submitRun } from '../net/api';
+import { sfx } from '../audio/sfx';
 import { HUD } from './HUD';
+import { BoosterBar } from './BoosterBar';
 import { ResultModal } from './ResultModal';
 
 export function GameScreen({ levelId }: { levelId: number }) {
@@ -10,7 +13,8 @@ export function GameScreen({ levelId }: { levelId: number }) {
   const controllerRef = useRef<GameController | null>(null);
   const [state, setState] = useState<GameState | null>(null);
   const [finished, setFinished] = useState<GameState | null>(null);
-  const [earned, setEarned] = useState(0);
+  const [result, setResult] = useState({ earned: 0, stars: 0 });
+  const [attempt, setAttempt] = useState(0);
 
   const setLive = useStore((s) => s.setLive);
   const finishLevel = useStore((s) => s.finishLevel);
@@ -20,6 +24,7 @@ export function GameScreen({ levelId }: { levelId: number }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    setFinished(null);
     const controller = new GameController(
       levelId,
       canvas,
@@ -27,9 +32,11 @@ export function GameScreen({ levelId }: { levelId: number }) {
         setState(s);
         setLive(s);
       },
-      (s) => {
+      (s: GameState, moves: RecordedMove[]) => {
         setFinished(s);
-        setEarned(finishLevel(levelId, s.score, s.status === 'won'));
+        setResult(finishLevel(levelId, s.score, s.status === 'won'));
+        // Best-effort authoritative submission; no-op offline.
+        void submitRun(levelId, moves, s.score, 'Player');
       },
     );
     controllerRef.current = controller;
@@ -40,7 +47,15 @@ export function GameScreen({ levelId }: { levelId: number }) {
       controller.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [levelId]);
+  }, [levelId, attempt]);
+
+  const replay = () => {
+    sfx.play('click');
+    setFinished(null);
+    setAttempt((a) => a + 1);
+  };
+
+  const busy = finished != null;
 
   return (
     <div className="game-screen">
@@ -55,12 +70,20 @@ export function GameScreen({ levelId }: { levelId: number }) {
       <div className="board-wrap">
         <canvas ref={canvasRef} className="board-canvas" />
       </div>
+      <BoosterBar
+        disabled={busy}
+        onHint={() => controllerRef.current?.showHint()}
+        onShuffle={() => controllerRef.current?.useShuffle()}
+        onExtraMoves={() => controllerRef.current?.useExtraMoves(5)}
+      />
       {finished && (
         <ResultModal
           won={finished.status === 'won'}
           score={finished.score}
-          earned={earned}
+          earned={result.earned}
+          stars={result.stars}
           onMap={openMap}
+          onReplay={replay}
         />
       )}
     </div>

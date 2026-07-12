@@ -1,31 +1,46 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GameState } from '@candyton/engine';
-import { LEVELS } from '@candyton/engine';
+import { LEVELS, getLevel, starsForScore } from '@candyton/engine';
 
 export type Screen = 'map' | 'game';
+
+export interface FinishResult {
+  earned: number;
+  stars: number;
+}
 
 interface AppState {
   screen: Screen;
   currentLevel: number | null;
   /** Highest level id the player has unlocked (1-based). */
   unlocked: number;
-  /** Off-chain GAME_TOKEN ledger. Phase 4 mirrors this to a TON Jetton. */
+  /** In-game coin balance, spent on boosters. */
   coins: number;
   bestScores: Record<number, number>;
+  /** Best star rating (0–3) earned per level. */
+  stars: Record<number, number>;
+  sound: boolean;
+  seenTutorial: boolean;
   /** Live in-game snapshot mirrored from the engine for the HUD. */
   live: GameState | null;
 
   openMap: () => void;
   startLevel: (id: number) => void;
   setLive: (s: GameState) => void;
-  finishLevel: (id: number, score: number, won: boolean) => number;
+  finishLevel: (id: number, score: number, won: boolean) => FinishResult;
+  spendCoins: (n: number) => boolean;
+  toggleSound: () => void;
+  markTutorialSeen: () => void;
 }
 
 /** Reward curve: coins earned scale with score plus a first-clear bonus. */
 export function coinsFor(score: number, firstClear: boolean): number {
   return Math.floor(score / 100) + (firstClear ? 50 : 0);
 }
+
+export const totalStars = (stars: Record<number, number>): number =>
+  Object.values(stars).reduce((a, b) => a + b, 0);
 
 export const useStore = create<AppState>()(
   persist(
@@ -35,6 +50,9 @@ export const useStore = create<AppState>()(
       unlocked: 1,
       coins: 0,
       bestScores: {},
+      stars: {},
+      sound: true,
+      seenTutorial: false,
       live: null,
 
       openMap: () => set({ screen: 'map', currentLevel: null, live: null }),
@@ -43,7 +61,10 @@ export const useStore = create<AppState>()(
 
       finishLevel: (id, score, won) => {
         const state = get();
+        const level = getLevel(id);
+        const stars = won && level ? starsForScore(level, score) : 0;
         const prevBest = state.bestScores[id] ?? 0;
+        const prevStars = state.stars[id] ?? 0;
         const firstClear = won && !(id in state.bestScores);
         const earned = won ? coinsFor(score, firstClear) : 0;
         const nextUnlocked =
@@ -52,9 +73,20 @@ export const useStore = create<AppState>()(
           coins: state.coins + earned,
           unlocked: nextUnlocked,
           bestScores: { ...state.bestScores, [id]: Math.max(prevBest, score) },
+          stars: { ...state.stars, [id]: Math.max(prevStars, stars) },
         });
-        return earned;
+        return { earned, stars };
       },
+
+      spendCoins: (n) => {
+        const state = get();
+        if (state.coins < n) return false;
+        set({ coins: state.coins - n });
+        return true;
+      },
+
+      toggleSound: () => set({ sound: !get().sound }),
+      markTutorialSeen: () => set({ seenTutorial: true }),
     }),
     { name: 'candyton-progress' },
   ),

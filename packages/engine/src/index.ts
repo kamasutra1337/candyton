@@ -18,4 +18,4 @@ export {
   type GameStatus,
   type ObjectiveProgress,
 } from './engine.js';
-export { LEVELS, getLevel } from './levels.js';
+export { LEVELS, getLevel, starsForScore } from './levels.js';
