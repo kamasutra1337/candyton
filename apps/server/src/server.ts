@@ -188,22 +188,22 @@ export function buildServer(opts: BuildOptions = {}): FastifyInstance {
   const publicUrl = (process.env.PUBLIC_URL ?? '').replace(/\/$/, '');
   const webhookSecret = process.env.WEBHOOK_SECRET ?? '';
   const playButton = {
-    inline_keyboard: [[{ text: '🍬 Play CandyTON', web_app: { url: `${publicUrl}/` } }]],
+    inline_keyboard: [[{ text: '🍬 Играть', web_app: { url: `${publicUrl}/` } }]],
   };
   const WELCOME =
-    '<b>Welcome to CandyTON</b> 🍬✨\n\n' +
-    'The sweetest match-3 on Telegram. Line up candies, chain <b>dazzling combos</b>, and climb the global leaderboard.\n\n' +
-    '🍭 <b>30 levels</b> across 5 sweet worlds\n' +
-    '✨ Striped, wrapped &amp; rainbow specials\n' +
-    '🏆 Boosters, stars &amp; a live <b>leaderboard</b>\n\n' +
-    'Tap <b>Play</b> and start your sugar rush 👇';
+    '🍬 <b>Добро пожаловать в CandyTON!</b> ✨\n\n' +
+    'Самый сладкий match-3 в Telegram. Собирай конфеты, запускай <b>яркие комбо</b> 💥 и поднимайся в мировом рейтинге 🏆\n\n' +
+    '🍭 <b>30 уровней</b> в 5 сладких мирах\n' +
+    '⚡️ Полосатые, обёрнутые и радужные бомбы\n' +
+    '🎁 Бустеры, звёзды и живой <b>лидерборд</b>\n\n' +
+    'Жми <b>Играть</b> и начинай свой сахарный движ 👇';
   const HELP =
-    '<b>How to play CandyTON</b> 🍬\n\n' +
-    '• Swipe a candy toward a neighbour, or tap two adjacent candies, to swap them.\n' +
-    '• Match <b>3+</b> of a colour to clear them and score.\n' +
-    '• Match <b>4</b> → striped, <b>L/T</b> → wrapped, <b>5</b> → rainbow bomb.\n' +
-    '• Clear each level’s goal before you run out of moves.\n\n' +
-    'Tap <b>Play</b> to jump in 👇';
+    '🎮 <b>Как играть в CandyTON</b> 🍬\n\n' +
+    '👆 Свайпни конфету к соседней (или тапни две рядом), чтобы поменять их местами\n' +
+    '🎯 Собери <b>3+</b> конфеты одного цвета — они лопнут и дадут очки\n' +
+    '✨ <b>4</b> в ряд → полосатая, <b>Г/Т</b> → обёрнутая, <b>5</b> → радужная бомба 🌈\n' +
+    '🏁 Выполни цель уровня, пока не кончились ходы\n\n' +
+    'Жми <b>Играть</b> и вперёд 👇';
 
   async function tg(method: string, payload: unknown): Promise<void> {
     if (!botToken) return;
@@ -244,14 +244,14 @@ export function buildServer(opts: BuildOptions = {}): FastifyInstance {
       } else if (cmd === '/leaderboard') {
         await tg('sendMessage', {
           chat_id: chatId,
-          text: '🏆 <b>Climb the leaderboard!</b> Open the game and tap the trophy to see who’s on top.',
+          text: '🏆 <b>Забирайся на вершину рейтинга!</b>\nОткрой игру и нажми на кубок 🏆, чтобы увидеть, кто в топе. Побей рекорд! 🔥',
           parse_mode: 'HTML',
           reply_markup: playButton,
         });
       } else {
         await tg('sendMessage', {
           chat_id: chatId,
-          text: 'Tap <b>Play</b> to start your sugar rush 🍬',
+          text: '🍬 Жми <b>Играть</b> и начинай свой сахарный движ ✨',
           parse_mode: 'HTML',
           reply_markup: playButton,
         });
