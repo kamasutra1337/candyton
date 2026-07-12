@@ -21,6 +21,32 @@ type Tween = {
   done: boolean;
 };
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  max: number;
+  size: number;
+  color: string;
+}
+
+interface Floater {
+  x: number;
+  y: number;
+  life: number;
+  max: number;
+  text: string;
+  color: string;
+  size: number;
+}
+
+type Fx =
+  | { type: 'beam'; horizontal: boolean; r: number; c: number; life: number; max: number }
+  | { type: 'ring'; r: number; c: number; life: number; max: number }
+  | { type: 'flash'; life: number; max: number };
+
 const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
 const easeOutBack = (t: number): number => {
   const c1 = 1.70158;
@@ -51,8 +77,14 @@ export class CanvasBoard {
   private tweens: Tween[] = [];
   /** Detached sprites (e.g. candies popping out) drawn on top of the grid. */
   private effects: Sprite[] = [];
+  private particles: Particle[] = [];
+  private floaters: Floater[] = [];
+  private fx: Fx[] = [];
+  private shake = 0;
+  private clearIndex = 0;
   private raf = 0;
   private now = 0;
+  private lastNow = 0;
   private busy = false;
   private selected: Pos | null = null;
   private hint: Pos[] = [];
@@ -105,8 +137,9 @@ export class CanvasBoard {
     }, durationMs);
   }
 
-  /** Snaps the visual grid to an engine board with no animation. */
-  setBoard(board: Board): void {
+  /** Syncs the visual grid to an engine board. With `animateIn`, candies rain
+   *  down in a staggered cascade for a level-start flourish. */
+  setBoard(board: Board, animateIn = false): void {
     this.rows = board.rows;
     this.cols = board.cols;
     this.layout();
@@ -117,6 +150,27 @@ export class CanvasBoard {
           : null,
       ),
     );
+    if (animateIn && this.cell > 0) this.playIntro();
+  }
+
+  private playIntro(): void {
+    this.busy = true;
+    this.particles = [];
+    this.floaters = [];
+    this.fx = [];
+    const anims: Promise<void>[] = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        const s = this.grid[r]?.[c];
+        if (!s) continue;
+        const targetY = s.y;
+        s.y = this.originY - this.cell; // start just above the board (off-screen)
+        anims.push(this.tween((v) => (s.y = v), s.y, targetY, 360, easeOutCubic, r * 12 + c * 24));
+      }
+    }
+    void Promise.all(anims).then(() => {
+      this.busy = false;
+    });
   }
 
   /** Recomputes cell size on resize; keeps sprites centred on their cells. */
@@ -168,9 +222,11 @@ export class CanvasBoard {
 
   private loop = (): void => {
     this.now = performance.now();
+    const dt = this.lastNow ? Math.min(64, this.now - this.lastNow) : 16;
+    this.lastNow = this.now;
     for (const tw of this.tweens) {
       if (tw.done) continue;
-      const t = tw.dur <= 0 ? 1 : Math.min(1, (this.now - tw.start) / tw.dur);
+      const t = tw.dur <= 0 ? 1 : Math.min(1, Math.max(0, (this.now - tw.start) / tw.dur));
       tw.set(tw.from + (tw.to - tw.from) * tw.ease(t));
       if (t >= 1) {
         tw.done = true;
@@ -178,9 +234,33 @@ export class CanvasBoard {
       }
     }
     if (this.tweens.length) this.tweens = this.tweens.filter((t) => !t.done);
+    this.advanceJuice(dt);
     this.draw();
     this.raf = requestAnimationFrame(this.loop);
   };
+
+  /** Steps particles / floating text / detonation FX / screen shake forward. */
+  private advanceJuice(dt: number): void {
+    this.shake *= Math.pow(0.001, dt / 1000); // exponential decay
+    if (this.shake < 0.2) this.shake = 0;
+
+    for (const p of this.particles) {
+      p.life -= dt;
+      p.x += p.vx * (dt / 1000);
+      p.y += p.vy * (dt / 1000);
+      p.vy += 900 * (dt / 1000); // gravity
+    }
+    this.particles = this.particles.filter((p) => p.life > 0);
+
+    for (const f of this.floaters) {
+      f.life -= dt;
+      f.y -= 32 * (dt / 1000);
+    }
+    this.floaters = this.floaters.filter((f) => f.life > 0);
+
+    for (const e of this.fx) e.life -= dt;
+    this.fx = this.fx.filter((e) => e.life > 0);
+  }
 
   destroy(): void {
     cancelAnimationFrame(this.raf);
@@ -195,9 +275,10 @@ export class CanvasBoard {
     to: number,
     dur: number,
     ease = easeOutCubic,
+    delay = 0,
   ): Promise<void> {
     return new Promise((resolve) => {
-      this.tweens.push({ set, from, to, dur, ease, start: this.now, resolve, done: false });
+      this.tweens.push({ set, from, to, dur, ease, start: this.now + delay, resolve, done: false });
     });
   }
 
@@ -206,6 +287,7 @@ export class CanvasBoard {
   async playSteps(steps: Step[], onStep?: (step: Step, index: number) => void): Promise<void> {
     this.busy = true;
     this.selected = null;
+    this.clearIndex = 0;
     for (let i = 0; i < steps.length; i++) {
       onStep?.(steps[i]!, i);
       await this.playStep(steps[i]!);
@@ -257,6 +339,7 @@ export class CanvasBoard {
   }
 
   private async animateClear(step: Extract<Step, { kind: 'clear' }>): Promise<void> {
+    this.spawnClearJuice(step);
     const anims: Promise<void>[] = [];
     for (const p of step.cells) {
       const s = this.grid[p.r]?.[p.c];
@@ -291,6 +374,86 @@ export class CanvasBoard {
       anims.push(this.tween((v) => (sprite.scale = v), 0.3, 1, 220, easeOutBack));
     }
     await Promise.all(anims);
+  }
+
+  private static readonly COMBO_LABELS = ['', 'Sweet!', 'Tasty!', 'Delicious!', 'Divine!', 'UNREAL!'];
+
+  /** Spawns the celebratory juice for a clear beat: particles, detonation FX,
+   *  floating score, combo banners and screen shake. */
+  private spawnClearJuice(step: Extract<Step, { kind: 'clear' }>): void {
+    if (this.cell <= 0) return;
+
+    // Particle burst per cleared candy, tinted to its colour.
+    let cx = 0;
+    let cy = 0;
+    for (const p of step.cells) {
+      const s = this.grid[p.r]?.[p.c];
+      const color = s ? (s.color < 0 ? '#ffffff' : styleFor(s.color).base) : '#ffffff';
+      const centre = this.centre(p.r, p.c);
+      cx += centre.x;
+      cy += centre.y;
+      const n = 4;
+      for (let i = 0; i < n; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 180;
+        this.particles.push({
+          x: centre.x,
+          y: centre.y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd - 40,
+          life: 350 + Math.random() * 300,
+          max: 650,
+          size: 2 + Math.random() * 3,
+          color,
+        });
+      }
+    }
+
+    // Detonation flourishes.
+    for (const d of step.detonated) {
+      if (d.special === 'stripedH')
+        this.fx.push({ type: 'beam', horizontal: true, r: d.pos.r, c: d.pos.c, life: 260, max: 260 });
+      else if (d.special === 'stripedV')
+        this.fx.push({ type: 'beam', horizontal: false, r: d.pos.r, c: d.pos.c, life: 260, max: 260 });
+      else if (d.special === 'wrapped')
+        this.fx.push({ type: 'ring', r: d.pos.r, c: d.pos.c, life: 320, max: 320 });
+      else if (d.special === 'colorBomb') this.fx.push({ type: 'flash', life: 260, max: 260 });
+    }
+
+    // Screen shake scales with the size of the blast.
+    const hasBomb = step.detonated.some((d) => d.special === 'colorBomb');
+    this.shake = Math.max(this.shake, hasBomb ? 13 : Math.min(7, step.cells.length * 0.5));
+
+    // Floating score at the blast's centre.
+    if (step.cells.length > 0 && step.scoreGained > 0) {
+      cx /= step.cells.length;
+      cy /= step.cells.length;
+      this.floaters.push({
+        x: cx,
+        y: cy,
+        life: 750,
+        max: 750,
+        text: `+${step.scoreGained}`,
+        color: '#fff2a0',
+        size: Math.min(34, 16 + step.cells.length),
+      });
+    }
+
+    // Combo banner on cascades (2nd wave onward).
+    if (this.clearIndex >= 1) {
+      const label =
+        CanvasBoard.COMBO_LABELS[Math.min(this.clearIndex, CanvasBoard.COMBO_LABELS.length - 1)]!;
+      this.floaters.push({
+        x: this.originX + (this.cols * this.cell) / 2,
+        y: this.originY + (this.rows * this.cell) / 2,
+        life: 850,
+        max: 850,
+        text: `${label} x${this.clearIndex + 1}`,
+        color: '#ff8fe0',
+        size: 30,
+      });
+    }
+    this.clearIndex++;
   }
 
   private async animateGravity(step: Extract<Step, { kind: 'gravity' }>): Promise<void> {
@@ -329,6 +492,11 @@ export class CanvasBoard {
     const rect = this.canvas.getBoundingClientRect();
     ctx.clearRect(0, 0, rect.width, rect.height);
 
+    ctx.save();
+    if (this.shake > 0) {
+      ctx.translate((Math.random() * 2 - 1) * this.shake, (Math.random() * 2 - 1) * this.shake);
+    }
+
     // Board backdrop with a checkerboard of translucent cells.
     for (let r = 0; r < this.rows; r++)
       for (let c = 0; c < this.cols; c++) {
@@ -340,11 +508,13 @@ export class CanvasBoard {
       }
 
     if (this.selected) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.now / 140);
+      const inset = 2 + pulse * 3;
       const x = this.originX + this.selected.c * this.cell;
       const y = this.originY + this.selected.r * this.cell;
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.strokeStyle = `rgba(255,255,255,${0.6 + pulse * 0.4})`;
       ctx.lineWidth = 3;
-      this.roundRect(x + 2, y + 2, this.cell - 4, this.cell - 4, 8);
+      this.roundRect(x + inset, y + inset, this.cell - inset * 2, this.cell - inset * 2, 8);
       ctx.stroke();
     }
 
@@ -366,8 +536,77 @@ export class CanvasBoard {
         if (s) this.drawSprite(s);
       }
 
+    // Detonation FX beneath the popping candies for a layered look.
+    this.drawFx();
+
     // Detached effects (popping candies) draw on top.
     for (const s of this.effects) this.drawSprite(s);
+
+    // Particles and floating text sit above everything.
+    this.drawParticles();
+    this.drawFloaters();
+
+    ctx.restore();
+  }
+
+  private drawFx(): void {
+    const ctx = this.ctx;
+    for (const e of this.fx) {
+      const t = e.life / e.max; // 1 -> 0
+      if (e.type === 'flash') {
+        ctx.fillStyle = `rgba(255,255,255,${0.35 * t})`;
+        ctx.fillRect(this.originX, this.originY, this.cols * this.cell, this.rows * this.cell);
+        continue;
+      }
+      if (e.type === 'beam') {
+        ctx.fillStyle = `rgba(255,255,255,${0.5 * t})`;
+        if (e.horizontal) {
+          const y = this.originY + e.r * this.cell;
+          ctx.fillRect(this.originX, y + this.cell * (0.5 - t * 0.5), this.cols * this.cell, this.cell * t);
+        } else {
+          const x = this.originX + e.c * this.cell;
+          ctx.fillRect(x + this.cell * (0.5 - t * 0.5), this.originY, this.cell * t, this.rows * this.cell);
+        }
+        continue;
+      }
+      // ring
+      const centre = this.centre(e.r, e.c);
+      ctx.strokeStyle = `rgba(255,255,255,${0.8 * t})`;
+      ctx.lineWidth = 4 * t + 1;
+      ctx.beginPath();
+      ctx.arc(centre.x, centre.y, this.cell * 1.6 * (1 - t), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  private drawParticles(): void {
+    const ctx = this.ctx;
+    for (const p of this.particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  private drawFloaters(): void {
+    const ctx = this.ctx;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const f of this.floaters) {
+      const t = f.life / f.max; // 1 -> 0
+      const pop = f.life > f.max - 120 ? (f.max - f.life) / 120 : 1; // scale-in
+      ctx.globalAlpha = Math.min(1, t * 1.6);
+      ctx.font = `800 ${Math.round(f.size * pop)}px system-ui, sans-serif`;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = f.color;
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
   }
 
   private drawSprite(s: Sprite): void {

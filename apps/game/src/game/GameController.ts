@@ -39,7 +39,7 @@ export class GameController {
     if (!level) throw new Error(`Unknown level ${levelId}`);
     this.engine = new Match3Engine(level);
     this.board = new CanvasBoard(canvas);
-    this.board.setBoard(this.engine.getBoard());
+    this.board.setBoard(this.engine.getBoard(), true); // level-start cascade
     this.board.onSwap = (a, b) => void this.handleSwap(a, b);
     this.onState(this.engine.getState());
   }

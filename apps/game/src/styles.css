@@ -400,6 +400,42 @@ body {
   color: var(--gold);
   text-shadow: 0 0 14px rgba(255, 210, 87, 0.7);
 }
+.modal .stars-row .star.lit {
+  animation: starPop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.modal .stars-row .star:nth-child(1).lit {
+  animation-delay: 0.15s;
+}
+.modal .stars-row .star:nth-child(2).lit {
+  animation-delay: 0.35s;
+}
+.modal .stars-row .star:nth-child(3).lit {
+  animation-delay: 0.55s;
+}
+@keyframes starPop {
+  0% {
+    transform: scale(0) rotate(-40deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+.modal-earned {
+  animation: floatUp 0.5s ease both;
+  animation-delay: 0.7s;
+}
+@keyframes floatUp {
+  0% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
 .star.sm {
   font-size: 15px;
 }

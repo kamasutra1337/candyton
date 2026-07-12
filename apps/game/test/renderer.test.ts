@@ -37,6 +37,9 @@ function makeCtx() {
   return {
     setTransform: noop,
     clearRect: noop,
+    fillRect: noop,
+    strokeText: noop,
+    translate: noop,
     beginPath: noop,
     moveTo: noop,
     lineTo: noop,
