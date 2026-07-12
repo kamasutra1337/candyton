@@ -49,12 +49,18 @@ export class CanvasBoard {
   private originY = 0;
   private dpr = 1;
   private tweens: Tween[] = [];
+  /** Detached sprites (e.g. candies popping out) drawn on top of the grid. */
+  private effects: Sprite[] = [];
   private raf = 0;
   private now = 0;
   private busy = false;
   private selected: Pos | null = null;
   private hint: Pos[] = [];
   private pointerStart: { x: number; y: number; cell: Pos } | null = null;
+  private readonly listeners = new AbortController();
+  private ro: ResizeObserver | null = null;
+  private lastW = 0;
+  private lastH = 0;
 
   /** Fired when the player requests a swap of two adjacent cells. */
   onSwap: (a: Pos, b: Pos) => void = () => {};
@@ -64,11 +70,31 @@ export class CanvasBoard {
     if (!ctx) throw new Error('2D canvas context unavailable');
     this.ctx = ctx;
     this.attachInput();
+    // Heal a zero-sized canvas at mount and follow every later resize.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.ro = new ResizeObserver(() => this.resize());
+      this.ro.observe(canvas);
+    }
     this.loop();
   }
 
   get isBusy(): boolean {
     return this.busy;
+  }
+
+  // --- diagnostics (used by the headless test harness) --------------------
+
+  /** The visual grid as plain data, for asserting sync against the engine. */
+  debugCells(): ({ color: number; special: SpecialType | null } | null)[][] {
+    return this.grid.map((row) => row.map((s) => (s ? { color: s.color, special: s.special } : null)));
+  }
+
+  debugEffects(): number {
+    return this.effects.length;
+  }
+
+  debugSelected(): Pos | null {
+    return this.selected;
   }
 
   /** Pulses an outline around cells to nudge the player toward a valid move. */
@@ -95,6 +121,9 @@ export class CanvasBoard {
 
   /** Recomputes cell size on resize; keeps sprites centred on their cells. */
   resize(): void {
+    const rect = this.canvas.getBoundingClientRect();
+    // Ignore spurious callbacks with no real size change (avoids animation jitter).
+    if (rect.width === this.lastW && rect.height === this.lastH) return;
     this.layout();
     for (let r = 0; r < this.rows; r++)
       for (let c = 0; c < this.cols; c++) {
@@ -109,6 +138,8 @@ export class CanvasBoard {
 
   private layout(): void {
     const rect = this.canvas.getBoundingClientRect();
+    this.lastW = rect.width;
+    this.lastH = rect.height;
     this.dpr = Math.min(window.devicePixelRatio || 1, 3);
     this.canvas.width = Math.floor(rect.width * this.dpr);
     this.canvas.height = Math.floor(rect.height * this.dpr);
@@ -153,6 +184,9 @@ export class CanvasBoard {
 
   destroy(): void {
     cancelAnimationFrame(this.raf);
+    this.listeners.abort();
+    this.ro?.disconnect();
+    this.ro = null;
   }
 
   private tween(
@@ -228,12 +262,22 @@ export class CanvasBoard {
       const s = this.grid[p.r]?.[p.c];
       if (!s) continue;
       this.grid[p.r]![p.c] = null;
-      anims.push(this.tween((v) => (s.scale = v), 1, 1.35, 90).then(() =>
-        Promise.all([
-          this.tween((v) => (s.scale = v), 1.35, 0, 120, easeInBack),
-          this.tween((v) => (s.alpha = v), 1, 0, 120),
-        ]).then(() => {}),
-      ));
+      // Keep the popping candy alive as a detached effect so the animation is
+      // actually visible (the grid cell is already gone).
+      this.effects.push(s);
+      anims.push(
+        this.tween((v) => (s.scale = v), 1, 1.35, 90)
+          .then(() =>
+            Promise.all([
+              this.tween((v) => (s.scale = v), 1.35, 0, 120, easeInBack),
+              this.tween((v) => (s.alpha = v), 1, 0, 120),
+            ]),
+          )
+          .then(() => {
+            const i = this.effects.indexOf(s);
+            if (i >= 0) this.effects.splice(i, 1);
+          }),
+      );
     }
     for (const cr of step.created) {
       const p = cr.pos;
@@ -321,6 +365,9 @@ export class CanvasBoard {
         const s = this.grid[r]?.[c];
         if (s) this.drawSprite(s);
       }
+
+    // Detached effects (popping candies) draw on top.
+    for (const s of this.effects) this.drawSprite(s);
   }
 
   private drawSprite(s: Sprite): void {
@@ -408,55 +455,112 @@ export class CanvasBoard {
 
   // --- input --------------------------------------------------------------
 
+  private adjacent(a: Pos, b: Pos): boolean {
+    return Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+  }
+
+  private requestSwap(a: Pos, b: Pos): void {
+    this.selected = null;
+    this.pointerStart = null;
+    if (
+      a.r >= 0 &&
+      a.r < this.rows &&
+      a.c >= 0 &&
+      a.c < this.cols &&
+      b.r >= 0 &&
+      b.r < this.rows &&
+      b.c >= 0 &&
+      b.c < this.cols
+    ) {
+      this.onSwap(a, b);
+    }
+  }
+
+  /**
+   * Supports both interaction styles players expect: drag a candy toward a
+   * neighbour, OR tap a candy then tap an adjacent one.
+   */
   private attachInput(): void {
+    const signal = this.listeners.signal;
+
     const down = (px: number, py: number): void => {
       if (this.busy) return;
       const cell = this.cellAt(px, py);
       if (!cell) return;
-      this.selected = cell;
       this.pointerStart = { x: px, y: py, cell };
     };
+
     const move = (px: number, py: number): void => {
       if (!this.pointerStart || this.busy) return;
       const dx = px - this.pointerStart.x;
       const dy = py - this.pointerStart.y;
-      const threshold = this.cell * 0.4;
+      const threshold = Math.max(12, this.cell * 0.35);
       if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
       const from = this.pointerStart.cell;
       const to: Pos =
         Math.abs(dx) > Math.abs(dy)
           ? { r: from.r, c: from.c + (dx > 0 ? 1 : -1) }
           : { r: from.r + (dy > 0 ? 1 : -1), c: from.c };
-      this.pointerStart = null;
-      this.selected = null;
-      if (to.r >= 0 && to.r < this.rows && to.c >= 0 && to.c < this.cols) this.onSwap(from, to);
+      this.requestSwap(from, to); // swipe swap
     };
+
     const up = (px: number, py: number): void => {
-      if (this.pointerStart && !this.busy) {
-        // A tap: select, then a second tap on a neighbour swaps.
-        const cell = this.cellAt(px, py);
-        void cell;
-      }
+      const start = this.pointerStart;
       this.pointerStart = null;
+      if (!start || this.busy) return;
+      const dx = px - start.x;
+      const dy = py - start.y;
+      // Treat as a tap only if the pointer barely moved.
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12) return;
+      const cell = this.cellAt(px, py);
+      if (!cell) {
+        this.selected = null;
+        return;
+      }
+      if (!this.selected) {
+        this.selected = cell; // first tap: select
+      } else if (this.selected.r === cell.r && this.selected.c === cell.c) {
+        this.selected = null; // tap again: deselect
+      } else if (this.adjacent(this.selected, cell)) {
+        this.requestSwap(this.selected, cell); // second tap on neighbour: swap
+      } else {
+        this.selected = cell; // tapped elsewhere: reselect
+      }
     };
 
     const rel = (e: PointerEvent): { x: number; y: number } => {
       const rect = this.canvas.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
-    this.canvas.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      const p = rel(e);
-      down(p.x, p.y);
-    });
-    this.canvas.addEventListener('pointermove', (e) => {
-      const p = rel(e);
-      move(p.x, p.y);
-    });
-    this.canvas.addEventListener('pointerup', (e) => {
-      const p = rel(e);
-      up(p.x, p.y);
-    });
+    this.canvas.addEventListener(
+      'pointerdown',
+      (e) => {
+        e.preventDefault();
+        const p = rel(e);
+        down(p.x, p.y);
+      },
+      { signal },
+    );
+    this.canvas.addEventListener(
+      'pointermove',
+      (e) => {
+        const p = rel(e);
+        move(p.x, p.y);
+      },
+      { signal },
+    );
+    this.canvas.addEventListener(
+      'pointerup',
+      (e) => {
+        const p = rel(e);
+        up(p.x, p.y);
+      },
+      { signal },
+    );
+    const cancel = (): void => {
+      this.pointerStart = null;
+    };
+    this.canvas.addEventListener('pointercancel', cancel, { signal });
     this.canvas.style.touchAction = 'none';
   }
 }

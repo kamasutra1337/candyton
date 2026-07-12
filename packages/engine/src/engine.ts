@@ -131,17 +131,18 @@ export class Match3Engine {
     if (!ta || !tb) return { valid: false, steps: [] };
 
     this.swapCells(a, b);
-    const steps: Step[] = [{ kind: 'swap', a, b }];
 
     const directBlast = this.swapActivation(a, b, ta, tb);
     const initialMatches = this.firstMatches(a, b);
 
     if (initialMatches.length === 0 && !directBlast) {
       this.swapCells(a, b); // revert
-      steps.push({ kind: 'invalidSwap', a, b });
-      return { valid: false, steps };
+      // Emit ONLY the bounce-back; a committing 'swap' step here would desync
+      // the renderer's grid from the (reverted) engine board.
+      return { valid: false, steps: [{ kind: 'invalidSwap', a, b }] };
     }
 
+    const steps: Step[] = [{ kind: 'swap', a, b }];
     this.movesLeft--;
     this.resolve(steps, initialMatches, directBlast);
     this.updateStatus();

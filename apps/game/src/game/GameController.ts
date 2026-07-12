@@ -87,7 +87,13 @@ export class GameController {
       this.onFinish(state, this.moves);
       return;
     }
-    if (!hasValidMove(this.engine.getBoard())) this.showHint();
+    // Never leave the player on a dead board.
+    if (!hasValidMove(this.engine.getBoard())) {
+      this.engine.shuffle();
+      this.board.setBoard(this.engine.getBoard());
+      sfx.play('special');
+      this.onState(this.engine.getState());
+    }
   }
 
   showHint(): void {
