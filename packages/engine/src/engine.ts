@@ -165,7 +165,10 @@ export class Match3Engine {
       const createdKeys = new Set<string>();
       for (const g of groups) {
         if (g.special) {
-          created.push({ pos: g.pivot, special: g.special, color: g.color });
+          // Report the colour actually placed — a Colour Bomb is RAINBOW, not
+          // its source colour — so the renderer mirrors the board exactly.
+          const color = g.special === 'colorBomb' ? RAINBOW : g.color;
+          created.push({ pos: g.pivot, special: g.special, color });
           createdKeys.add(posKey(g.pivot));
         }
       }

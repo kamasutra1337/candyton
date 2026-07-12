@@ -254,13 +254,18 @@ body {
 }
 .objective {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 13px;
+}
+.objective-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .objective.done {
   border-color: rgba(49, 208, 170, 0.5);
@@ -268,6 +273,21 @@ body {
 }
 .objective-progress {
   font-weight: 700;
+}
+.objective-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.objective-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.objective.done .objective-fill {
+  background: linear-gradient(90deg, var(--good), #7ef0d3);
 }
 
 .board-wrap {
@@ -526,9 +546,106 @@ body {
   }
 }
 
+/* Chapters on the level map */
+.chapter {
+  margin-bottom: 22px;
+}
+.chapter.locked {
+  opacity: 0.55;
+}
+.chapter-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 2px 10px;
+}
+.chapter-icon {
+  font-size: 20px;
+}
+.chapter-name {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+.chapter-stars {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(255, 210, 87, 0.1);
+  border: 1px solid rgba(255, 210, 87, 0.25);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+/* Current level pulse-glow */
+.level-card.current {
+  border-color: rgba(255, 94, 203, 0.6);
+  box-shadow: 0 0 0 1px rgba(255, 94, 203, 0.4), 0 8px 24px rgba(255, 94, 203, 0.25);
+  animation:
+    cardIn 0.4s ease backwards,
+    currentGlow 2s ease-in-out infinite 0.5s;
+}
+@keyframes currentGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(255, 94, 203, 0.35), 0 6px 18px rgba(255, 94, 203, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(255, 94, 203, 0.7), 0 10px 30px rgba(255, 94, 203, 0.4);
+  }
+}
+
+/* Ambient animated background — slow drifting candy-coloured auroras */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.28;
+  pointer-events: none;
+}
+body::before {
+  background: radial-gradient(circle, #ff5ecb, transparent 70%);
+  top: -20vmax;
+  left: -15vmax;
+  animation: drift1 26s ease-in-out infinite;
+}
+body::after {
+  background: radial-gradient(circle, #7c5cff, transparent 70%);
+  bottom: -20vmax;
+  right: -15vmax;
+  animation: drift2 32s ease-in-out infinite;
+}
+@keyframes drift1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(18vw, 12vh) scale(1.15);
+  }
+}
+@keyframes drift2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-16vw, -10vh) scale(1.2);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stat-value.danger,
-  .brand-candy {
+  .brand-candy,
+  .level-card.current,
+  body::before,
+  body::after {
     animation: none;
   }
   .confetti {

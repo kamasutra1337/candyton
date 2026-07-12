@@ -40,12 +40,20 @@ export function HUD({ level, state, onBack, onHint }: Props) {
       </div>
 
       <div className="objectives">
-        {state.objectives.map((p, i) => (
-          <div key={i} className={`objective ${p.done ? 'done' : ''}`}>
-            <span className="objective-label">{objectiveLabel(p.objective)}</span>
-            <span className="objective-progress">{p.done ? '✓' : progressText(p)}</span>
-          </div>
-        ))}
+        {state.objectives.map((p, i) => {
+          const pct = Math.min(100, Math.round((p.current / p.target) * 100));
+          return (
+            <div key={i} className={`objective ${p.done ? 'done' : ''}`}>
+              <div className="objective-row">
+                <span className="objective-label">{objectiveLabel(p.objective)}</span>
+                <span className="objective-progress">{p.done ? '✓' : progressText(p)}</span>
+              </div>
+              <div className="objective-bar">
+                <div className="objective-fill" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

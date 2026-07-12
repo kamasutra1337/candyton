@@ -174,7 +174,9 @@ describe('CanvasBoard stays in sync with the engine', () => {
   });
 
   it('plays many full games staying in sync every single move', async () => {
-    for (const levelId of [1, 3, 5, 7]) {
+    // Span chapters / board sizes / colour counts, including 9x9 8-colour boards
+    // where colour bombs appear — exercising the full mirroring path.
+    for (const levelId of [1, 3, 7, 13, 25, 30]) {
       const engine = new Match3Engine(getLevel(levelId)!);
       const { board } = newBoard();
       board.setBoard(engine.getBoard());
