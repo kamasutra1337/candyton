@@ -65,3 +65,21 @@ export async function submitRun(
   await ensureSession(playerName);
   return call<SubmitResult>(`/levels/${levelId}/submit`, { moves, claimedScore }, true);
 }
+
+export interface LeaderRow {
+  rank: number;
+  name: string;
+  score: number;
+  stars?: number;
+}
+
+/** Fetches a leaderboard: a specific level, or the global ranking when omitted. */
+export async function fetchLeaderboard(
+  levelId?: number,
+  limit = 50,
+): Promise<LeaderRow[] | null> {
+  const path =
+    levelId != null ? `/leaderboard/${levelId}?limit=${limit}` : `/leaderboard?limit=${limit}`;
+  const res = await call<{ entries: LeaderRow[] }>(path);
+  return res?.entries ?? null;
+}

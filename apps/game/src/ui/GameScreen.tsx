@@ -35,8 +35,8 @@ export function GameScreen({ levelId }: { levelId: number }) {
       (s: GameState, moves: RecordedMove[]) => {
         setFinished(s);
         setResult(finishLevel(levelId, s.score, s.status === 'won'));
-        // Best-effort authoritative submission; no-op offline.
-        void submitRun(levelId, moves, s.score, 'Player');
+        // Best-effort authoritative submission under the player's name; no-op offline.
+        void submitRun(levelId, moves, s.score, useStore.getState().resolveName());
       },
     );
     controllerRef.current = controller;

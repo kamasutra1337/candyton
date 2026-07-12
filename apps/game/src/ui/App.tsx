@@ -3,6 +3,7 @@ import { useStore, totalStars } from '../state/store';
 import { sfx } from '../audio/sfx';
 import { LevelMap } from './LevelMap';
 import { GameScreen } from './GameScreen';
+import { Leaderboard } from './Leaderboard';
 import { Onboarding } from './Onboarding';
 
 export function App() {
@@ -14,10 +15,16 @@ export function App() {
   const toggleSound = useStore((s) => s.toggleSound);
   const seenTutorial = useStore((s) => s.seenTutorial);
   const markTutorialSeen = useStore((s) => s.markTutorialSeen);
+  const openLeaderboard = useStore((s) => s.openLeaderboard);
+  const resolveName = useStore((s) => s.resolveName);
 
   useEffect(() => {
     sfx.setEnabled(sound);
   }, [sound]);
+
+  useEffect(() => {
+    resolveName();
+  }, [resolveName]);
 
   return (
     <div className="app">
@@ -41,6 +48,17 @@ export function App() {
             className="icon-btn small"
             onClick={() => {
               sfx.unlock();
+              sfx.play('click');
+              openLeaderboard();
+            }}
+            aria-label="Leaderboard"
+          >
+            🏆
+          </button>
+          <button
+            className="icon-btn small"
+            onClick={() => {
+              sfx.unlock();
               toggleSound();
             }}
             aria-label="Toggle sound"
@@ -53,6 +71,8 @@ export function App() {
       <main className="app-main">
         {screen === 'game' && currentLevel != null ? (
           <GameScreen levelId={currentLevel} />
+        ) : screen === 'leaderboard' ? (
+          <Leaderboard />
         ) : (
           <LevelMap />
         )}
