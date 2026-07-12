@@ -1,10 +1,11 @@
 import { useStore } from '../state/store';
+import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';
 
 export const BOOSTERS = {
-  hint: { label: 'Hint', icon: '💡', cost: 0 },
-  shuffle: { label: 'Shuffle', icon: '🔀', cost: 30 },
-  moves: { label: '+5 Moves', icon: '⏱️', cost: 80 },
+  hint: { icon: '💡', cost: 0 },
+  shuffle: { icon: '🔀', cost: 30 },
+  moves: { icon: '⏱️', cost: 80 },
 } as const;
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 export function BoosterBar({ onHint, onShuffle, onExtraMoves, disabled }: Props) {
   const coins = useStore((s) => s.coins);
   const spend = useStore((s) => s.spendCoins);
+  const t = useT();
 
   const buy = (cost: number, action: () => void) => () => {
     if (disabled) return;
@@ -32,8 +34,8 @@ export function BoosterBar({ onHint, onShuffle, onExtraMoves, disabled }: Props)
     <div className="booster-bar">
       <button className="booster" onClick={buy(BOOSTERS.hint.cost, onHint)} disabled={disabled}>
         <span className="booster-icon">{BOOSTERS.hint.icon}</span>
-        <span className="booster-label">{BOOSTERS.hint.label}</span>
-        <span className="booster-cost free">Free</span>
+        <span className="booster-label">{t('booster.hint')}</span>
+        <span className="booster-cost free">{t('booster.free')}</span>
       </button>
       <button
         className={`booster ${coins < BOOSTERS.shuffle.cost ? 'poor' : ''}`}
@@ -41,7 +43,7 @@ export function BoosterBar({ onHint, onShuffle, onExtraMoves, disabled }: Props)
         disabled={disabled}
       >
         <span className="booster-icon">{BOOSTERS.shuffle.icon}</span>
-        <span className="booster-label">{BOOSTERS.shuffle.label}</span>
+        <span className="booster-label">{t('booster.shuffle')}</span>
         <span className="booster-cost">🪙 {BOOSTERS.shuffle.cost}</span>
       </button>
       <button
@@ -50,7 +52,7 @@ export function BoosterBar({ onHint, onShuffle, onExtraMoves, disabled }: Props)
         disabled={disabled}
       >
         <span className="booster-icon">{BOOSTERS.moves.icon}</span>
-        <span className="booster-label">{BOOSTERS.moves.label}</span>
+        <span className="booster-label">{t('booster.moves')}</span>
         <span className="booster-cost">🪙 {BOOSTERS.moves.cost}</span>
       </button>
     </div>

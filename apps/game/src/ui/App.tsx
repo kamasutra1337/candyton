@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useStore, totalStars } from '../state/store';
+import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';
 import { LevelMap } from './LevelMap';
 import { GameScreen } from './GameScreen';
 import { Leaderboard } from './Leaderboard';
 import { Onboarding } from './Onboarding';
+import { LanguagePicker } from './LanguagePicker';
 
 export function App() {
   const screen = useStore((s) => s.screen);
@@ -17,6 +19,9 @@ export function App() {
   const markTutorialSeen = useStore((s) => s.markTutorialSeen);
   const openLeaderboard = useStore((s) => s.openLeaderboard);
   const resolveName = useStore((s) => s.resolveName);
+  const langChosen = useStore((s) => s.langChosen);
+  const openLangPicker = useStore((s) => s.openLangPicker);
+  const t = useT();
 
   useEffect(() => {
     sfx.setEnabled(sound);
@@ -36,11 +41,11 @@ export function App() {
           </span>
         </div>
         <div className="header-right">
-          <div className="stat-pill" title="Total stars earned">
+          <div className="stat-pill" title={t('app.stars')}>
             <span>⭐</span>
             <span>{totalStars(stars)}</span>
           </div>
-          <div className="stat-pill" title="Your coin balance">
+          <div className="stat-pill" title={t('app.coins')}>
             <span>🪙</span>
             <span>{coins.toLocaleString()}</span>
           </div>
@@ -51,7 +56,7 @@ export function App() {
               sfx.play('click');
               openLeaderboard();
             }}
-            aria-label="Leaderboard"
+            aria-label={t('app.leaderboard')}
           >
             🏆
           </button>
@@ -59,9 +64,20 @@ export function App() {
             className="icon-btn small"
             onClick={() => {
               sfx.unlock();
+              sfx.play('click');
+              openLangPicker();
+            }}
+            aria-label={t('app.language')}
+          >
+            🌐
+          </button>
+          <button
+            className="icon-btn small"
+            onClick={() => {
+              sfx.unlock();
               toggleSound();
             }}
-            aria-label="Toggle sound"
+            aria-label={t('app.sound')}
           >
             {sound ? '🔊' : '🔇'}
           </button>
@@ -78,7 +94,8 @@ export function App() {
         )}
       </main>
 
-      {!seenTutorial && <Onboarding onDone={markTutorialSeen} />}
+      {!langChosen && <LanguagePicker />}
+      {langChosen && !seenTutorial && <Onboarding onDone={markTutorialSeen} />}
     </div>
   );
 }

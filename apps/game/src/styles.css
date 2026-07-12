@@ -640,6 +640,42 @@ body::after {
   }
 }
 
+/* Language picker */
+.lang-modal .lang-sub {
+  color: var(--text-dim);
+  font-size: 14px;
+  margin: 2px 0 18px;
+}
+.lang-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lang-opt {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.2s ease;
+}
+.lang-opt:active {
+  transform: scale(0.98);
+}
+.lang-opt.sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(255, 94, 203, 0.4);
+}
+.lang-flag {
+  font-size: 26px;
+}
+
 /* Leaderboard */
 .leaderboard {
   display: flex;

@@ -23,6 +23,10 @@ interface AppState {
   stars: Record<number, number>;
   sound: boolean;
   seenTutorial: boolean;
+  /** UI language. Russian is the priority default. */
+  lang: 'ru' | 'en';
+  /** Whether the player has picked a language yet (drives the first-run picker). */
+  langChosen: boolean;
   /** Display name used for leaderboard submissions (Telegram name or a guest). */
   playerName: string;
   /** Live in-game snapshot mirrored from the engine for the HUD. */
@@ -36,6 +40,8 @@ interface AppState {
   spendCoins: (n: number) => boolean;
   toggleSound: () => void;
   markTutorialSeen: () => void;
+  chooseLang: (l: 'ru' | 'en') => void;
+  openLangPicker: () => void;
   /** Resolves a stable display name once (Telegram user, else a guest tag). */
   resolveName: () => string;
 }
@@ -59,6 +65,8 @@ export const useStore = create<AppState>()(
       stars: {},
       sound: true,
       seenTutorial: false,
+      lang: 'ru',
+      langChosen: false,
       playerName: '',
       live: null,
 
@@ -104,6 +112,8 @@ export const useStore = create<AppState>()(
 
       toggleSound: () => set({ sound: !get().sound }),
       markTutorialSeen: () => set({ seenTutorial: true }),
+      chooseLang: (lang) => set({ lang, langChosen: true }),
+      openLangPicker: () => set({ langChosen: false }),
     }),
     { name: 'candyton-progress' },
   ),

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/store';
+import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';
 import { apiEnabled, fetchLeaderboard, type LeaderRow } from '../net/api';
 
@@ -11,6 +12,7 @@ export function Leaderboard() {
   const openMap = useStore((s) => s.openMap);
   const unlocked = useStore((s) => s.unlocked);
   const me = useStore((s) => s.playerName);
+  const t = useT();
 
   const [mode, setMode] = useState<Mode>('global');
   const [rows, setRows] = useState<LeaderRow[] | null>(null);
@@ -39,7 +41,7 @@ export function Leaderboard() {
         <button className="icon-btn" onClick={() => { sfx.play('click'); openMap(); }} aria-label="Back">
           ‹
         </button>
-        <h2 className="lb-title">🏆 Leaderboard</h2>
+        <h2 className="lb-title">🏆 {t('lb.title')}</h2>
         <span style={{ width: 40 }} />
       </div>
 
@@ -48,7 +50,7 @@ export function Leaderboard() {
           className={`lb-tab ${mode === 'global' ? 'active' : ''}`}
           onClick={() => { sfx.play('click'); setMode('global'); }}
         >
-          Global
+          {t('lb.global')}
         </button>
         <div className="lb-levels">
           {levels.map((id) => (
@@ -65,14 +67,14 @@ export function Leaderboard() {
 
       <div className="lb-list">
         {!apiEnabled() ? (
-          <p className="lb-empty">Leaderboards are available in the online version.</p>
+          <p className="lb-empty">{t('lb.offline')}</p>
         ) : loading ? (
-          <p className="lb-empty">Loading…</p>
+          <p className="lb-empty">{t('lb.loading')}</p>
         ) : rows && rows.length > 0 ? (
           rows.map((r) => (
             <div key={`${r.rank}-${r.name}`} className={`lb-row ${r.name === me ? 'me' : ''} ${r.rank <= 3 ? 'top' : ''}`}>
               <span className="lb-rank">{medal(r.rank)}</span>
-              <span className="lb-name">{r.name}{r.name === me ? ' (you)' : ''}</span>
+              <span className="lb-name">{r.name}{r.name === me ? ` (${t('lb.you')})` : ''}</span>
               {typeof mode === 'number' && r.stars != null && (
                 <span className="lb-stars">{'★'.repeat(r.stars)}</span>
               )}
@@ -80,12 +82,12 @@ export function Leaderboard() {
             </div>
           ))
         ) : (
-          <p className="lb-empty">No scores yet — play a level to claim the top spot! 🍬</p>
+          <p className="lb-empty">{t('lb.empty')}</p>
         )}
       </div>
 
       <p className="lb-foot">
-        {mode === 'global' ? 'Ranked by total best score across levels.' : `Level ${mode} — highest score first.`}
+        {mode === 'global' ? t('lb.footGlobal') : t('lb.footLevel', { n: mode })}
       </p>
     </div>
   );

@@ -1,27 +1,18 @@
 import { useState } from 'react';
+import { useT } from '../i18n';
 
-const STEPS = [
-  {
-    icon: '🍬',
-    title: 'Welcome to CandyTON',
-    body: 'Swipe a candy toward a neighbour to swap them. Line up 3 or more of the same colour to clear them and score.',
-  },
-  {
-    icon: '✨',
-    title: 'Make Special Candies',
-    body: 'Match 4 in a row for a Striped candy (clears a line), an L or T shape for a Wrapped candy (3×3 blast), and 5 in a row for a Colour Bomb.',
-  },
-  {
-    icon: '🎯',
-    title: 'Beat the Level',
-    body: 'Each level has an objective and a move limit. Clear it to earn coins and stars, unlock the next level, and spend coins on boosters.',
-  },
-];
+const ICONS = ['🍬', '✨', '🎯'];
 
 export function Onboarding({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const [i, setI] = useState(0);
-  const step = STEPS[i]!;
-  const last = i === STEPS.length - 1;
+  const steps = [
+    { icon: ICONS[0], title: t('ob1.title'), body: t('ob1.body') },
+    { icon: ICONS[1], title: t('ob2.title'), body: t('ob2.body') },
+    { icon: ICONS[2], title: t('ob3.title'), body: t('ob3.body') },
+  ];
+  const step = steps[i]!;
+  const last = i === steps.length - 1;
 
   return (
     <div className="modal-backdrop">
@@ -30,12 +21,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <h2>{step.title}</h2>
         <p className="onboarding-body">{step.body}</p>
         <div className="onboarding-dots">
-          {STEPS.map((_, k) => (
+          {steps.map((_, k) => (
             <span key={k} className={`dot ${k === i ? 'active' : ''}`} />
           ))}
         </div>
         <button className="btn primary" onClick={() => (last ? onDone() : setI(i + 1))}>
-          {last ? "Let's Play" : 'Next'}
+          {last ? t('ob.play') : t('ob.next')}
         </button>
       </div>
     </div>

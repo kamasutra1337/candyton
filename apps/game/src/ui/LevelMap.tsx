@@ -1,5 +1,6 @@
 import { CHAPTERS, LEVELS } from '@candyton/engine';
 import { useStore } from '../state/store';
+import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';
 import { objectiveLabel } from './objectives';
 
@@ -8,14 +9,13 @@ export function LevelMap() {
   const bestScores = useStore((s) => s.bestScores);
   const stars = useStore((s) => s.stars);
   const startLevel = useStore((s) => s.startLevel);
+  const t = useT();
 
   let cardIndex = 0;
 
   return (
     <div className="level-map">
-      <p className="map-intro">
-        Match candies, chase three stars, and climb through five sweet worlds.
-      </p>
+      <p className="map-intro">{t('map.intro')}</p>
 
       {CHAPTERS.map((ch) => {
         const levels = LEVELS.filter((l) => l.id >= ch.from && l.id <= ch.to);
@@ -53,8 +53,10 @@ export function LevelMap() {
                     <div className="level-num">{locked ? '🔒' : lvl.id}</div>
                     <div className="level-info">
                       <span className="level-title">{lvl.name}</span>
-                      <span className="level-goal">{objectiveLabel(lvl.objectives[0]!)}</span>
-                      {best != null && <span className="level-best">Best {best.toLocaleString()}</span>}
+                      <span className="level-goal">{objectiveLabel(t, lvl.objectives[0]!)}</span>
+                      {best != null && (
+                        <span className="level-best">{t('map.best', { n: best.toLocaleString() })}</span>
+                      )}
                     </div>
                     {!locked && (
                       <div className="card-stars">

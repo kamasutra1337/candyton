@@ -1,4 +1,5 @@
 import { Confetti } from './Confetti';
+import { useT } from '../i18n';
 
 interface Props {
   won: boolean;
@@ -10,12 +11,13 @@ interface Props {
 }
 
 export function ResultModal({ won, score, earned, stars, onMap, onReplay }: Props) {
+  const t = useT();
   return (
     <div className="modal-backdrop">
       {won && <Confetti />}
       <div className={`modal ${won ? 'win' : 'lose'}`}>
         <div className="modal-emoji">{won ? '🎉' : '💔'}</div>
-        <h2>{won ? 'Level Cleared!' : 'Out of Moves'}</h2>
+        <h2>{won ? t('result.win') : t('result.lose')}</h2>
 
         {won && (
           <div className="stars-row">
@@ -27,19 +29,19 @@ export function ResultModal({ won, score, earned, stars, onMap, onReplay }: Prop
           </div>
         )}
 
-        <p className="modal-score">{score.toLocaleString()} points</p>
+        <p className="modal-score">{t('result.points', { n: score.toLocaleString() })}</p>
         {won && earned > 0 && (
           <p className="modal-earned">
-            +{earned} <span className="token">🪙 coins</span>
+            +{earned} <span className="token">🪙 {t('result.earned')}</span>
           </p>
         )}
 
         <div className="modal-actions">
           <button className="btn ghost" onClick={onReplay}>
-            Replay
+            {t('result.replay')}
           </button>
           <button className="btn primary" onClick={onMap}>
-            {won ? 'Continue' : 'Map'}
+            {won ? t('result.continue') : t('result.map')}
           </button>
         </div>
       </div>
