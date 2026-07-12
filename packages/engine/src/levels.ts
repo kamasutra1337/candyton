@@ -61,6 +61,26 @@ export function getLevel(id: number): LevelConfig | undefined {
   return LEVELS.find((l) => l.id === id);
 }
 
+/**
+ * A head-to-head duel board. Both players build the identical board from the
+ * same `seed` and race for the highest score within the move limit. The score
+ * target is unreachable so play always runs to the last move — the final score
+ * is what decides the duel.
+ */
+export function duelLevel(seed: number): LevelConfig {
+  return {
+    id: 0,
+    name: 'Duel',
+    rows: 8,
+    cols: 8,
+    colors: 6,
+    moves: 20,
+    seed: seed >>> 0,
+    objectives: [{ kind: 'score', target: Number.MAX_SAFE_INTEGER }],
+    starScores: [3000, 6000, 10000],
+  };
+}
+
 /** Star rating (0–3) for a score, using the level's thresholds. */
 export function starsForScore(level: LevelConfig, score: number): number {
   const t = level.starScores ?? [level.moves * 200, level.moves * 350, level.moves * 500];

@@ -26,7 +26,7 @@ export function GameScreen({ levelId }: { levelId: number }) {
     if (!canvas) return;
     setFinished(null);
     const controller = new GameController(
-      levelId,
+      getLevel(levelId)!,
       canvas,
       (s) => {
         setState(s);

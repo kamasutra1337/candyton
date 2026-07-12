@@ -10,10 +10,12 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import fstatic from '@fastify/static';
+import websocket from '@fastify/websocket';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 
 import { InMemoryStore, type Player, type Store } from './store.js';
+import { registerSignaling } from './signaling.js';
 import { TokenAuth, bearerFromHeader, verifyTelegramInitData } from './auth.js';
 import { simulate } from './scoring.js';
 
@@ -39,6 +41,13 @@ export function buildServer(opts: BuildOptions = {}): FastifyInstance {
   const botToken = opts.botToken ?? process.env.BOT_TOKEN ?? '';
 
   app.register(cors, { origin: true });
+
+  // WebSocket signaling for the video-duel roulette (registered in an
+  // encapsulated context so the plugin loads before the /rtc route is added).
+  app.register(async (instance) => {
+    await instance.register(websocket);
+    registerSignaling(instance);
+  });
 
   /** preHandler that requires a valid bearer token and attaches request.player. */
   function authenticate(req: FastifyRequest, reply: FastifyReply, done: (err?: Error) => void): void {
@@ -191,19 +200,20 @@ export function buildServer(opts: BuildOptions = {}): FastifyInstance {
     inline_keyboard: [[{ text: '🍬 Играть', web_app: { url: `${publicUrl}/` } }]],
   };
   const WELCOME =
-    '🍬 <b>Добро пожаловать в CandyTON!</b> ✨\n\n' +
-    'Самый сладкий match-3 в Telegram. Собирай конфеты, запускай <b>яркие комбо</b> 💥 и поднимайся в мировом рейтинге 🏆\n\n' +
-    '🍭 <b>30 уровней</b> в 5 сладких мирах\n' +
-    '⚡️ Полосатые, обёрнутые и радужные бомбы\n' +
-    '🎁 Бустеры, звёзды и живой <b>лидерборд</b>\n\n' +
-    'Жми <b>Играть</b> и начинай свой сахарный движ 👇';
+    '🍬 <b>Добро пожаловать в CandyBlast!</b> ✨\n\n' +
+    '🎥 <b>Дуэли на желания по видео.</b> Тебя коннектит со случайным соперником, вы загадываете друг другу желание и играете match-3 дуэль. <b>Кто проиграл — выполняет желание!</b> 😈\n\n' +
+    '🎯 Собирай конфеты, делай <b>яркие комбо</b> 💥 и побеждай\n' +
+    '🎮 Есть и одиночный режим: 30 уровней в 5 мирах\n' +
+    '🏆 Живой рейтинг лучших игроков\n\n' +
+    'Жми <b>Играть</b> и вызывай соперника 👇';
   const HELP =
-    '🎮 <b>Как играть в CandyTON</b> 🍬\n\n' +
-    '👆 Свайпни конфету к соседней (или тапни две рядом), чтобы поменять их местами\n' +
-    '🎯 Собери <b>3+</b> конфеты одного цвета — они лопнут и дадут очки\n' +
+    '🎮 <b>Как играть в CandyBlast</b> 🍬\n\n' +
+    '🎥 В дуэли тебя коннектит с соперником по видео — загадайте желания и сыграйте\n' +
+    '👆 Свайпни конфету к соседней, чтобы поменять их местами\n' +
+    '🎯 Собери <b>3+</b> одного цвета — они лопнут и дадут очки\n' +
     '✨ <b>4</b> в ряд → полосатая, <b>Г/Т</b> → обёрнутая, <b>5</b> → радужная бомба 🌈\n' +
-    '🏁 Выполни цель уровня, пока не кончились ходы\n\n' +
-    'Жми <b>Играть</b> и вперёд 👇';
+    '🏁 Выше счёт — победа. Проигравший выполняет желание!\n\n' +
+    'Жми <b>Играть</b> 👇';
 
   async function tg(method: string, payload: unknown): Promise<void> {
     if (!botToken) return;

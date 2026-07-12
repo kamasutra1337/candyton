@@ -13,9 +13,9 @@ const app = buildServer();
 app
   .listen({ port, host })
   .then((address) => {
-    app.log.info?.(`CandyTON server listening on ${address}`);
+    app.log.info?.(`CandyBlast server listening on ${address}`);
     // eslint-disable-next-line no-console
-    console.log(`CandyTON server listening on ${address}`);
+    console.log(`CandyBlast server listening on ${address}`);
   })
   .catch((err) => {
     // eslint-disable-next-line no-console

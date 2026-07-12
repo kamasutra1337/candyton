@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { GameState } from '@candyton/engine';
 import { LEVELS, getLevel, starsForScore } from '@candyton/engine';
-import { telegramUser } from '../web3/telegram';
+import { telegramUser } from '../platform/telegram';
 
-export type Screen = 'map' | 'game' | 'leaderboard';
+export type Screen = 'home' | 'map' | 'game' | 'leaderboard' | 'roulette';
 
 export interface FinishResult {
   earned: number;
@@ -32,6 +32,8 @@ interface AppState {
   /** Live in-game snapshot mirrored from the engine for the HUD. */
   live: GameState | null;
 
+  openHome: () => void;
+  openRoulette: () => void;
   openMap: () => void;
   openLeaderboard: () => void;
   startLevel: (id: number) => void;
@@ -57,7 +59,7 @@ export const totalStars = (stars: Record<number, number>): number =>
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      screen: 'map',
+      screen: 'home',
       currentLevel: null,
       unlocked: 1,
       coins: 0,
@@ -70,6 +72,8 @@ export const useStore = create<AppState>()(
       playerName: '',
       live: null,
 
+      openHome: () => set({ screen: 'home', currentLevel: null, live: null }),
+      openRoulette: () => set({ screen: 'roulette', live: null }),
       openMap: () => set({ screen: 'map', currentLevel: null, live: null }),
       openLeaderboard: () => set({ screen: 'leaderboard', live: null }),
       startLevel: (id) => set({ screen: 'game', currentLevel: id, live: null }),

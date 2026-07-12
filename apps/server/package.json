@@ -14,6 +14,7 @@
     "@candyton/engine": "*",
     "@fastify/cors": "^10.0.1",
     "@fastify/static": "^8.0.3",
+    "@fastify/websocket": "^11.3.0",
     "fastify": "^5.1.0"
   },
   "devDependencies": {

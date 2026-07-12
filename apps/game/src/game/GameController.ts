@@ -1,14 +1,14 @@
 import {
   Match3Engine,
   findHint,
-  getLevel,
   hasValidMove,
   type GameState,
+  type LevelConfig,
   type Pos,
   type Step,
 } from '@candyton/engine';
 import { CanvasBoard } from '../render/CanvasBoard';
-import { haptic } from '../web3/telegram';
+import { haptic } from '../platform/telegram';
 import { sfx } from '../audio/sfx';
 
 /** A recorded swap, replayed by the server to validate the score. */
@@ -30,13 +30,11 @@ export class GameController {
   private finished = false;
 
   constructor(
-    readonly levelId: number,
+    level: LevelConfig,
     canvas: HTMLCanvasElement,
     private readonly onState: (s: GameState) => void,
     private readonly onFinish: (s: GameState, moves: RecordedMove[]) => void,
   ) {
-    const level = getLevel(levelId);
-    if (!level) throw new Error(`Unknown level ${levelId}`);
     this.engine = new Match3Engine(level);
     this.board = new CanvasBoard(canvas);
     this.board.setBoard(this.engine.getBoard(), true); // level-start cascade

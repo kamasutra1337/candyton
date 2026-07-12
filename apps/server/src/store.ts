@@ -1,5 +1,5 @@
 /**
- * In-memory persistence for the CandyTON backend.
+ * In-memory persistence for the CandyBlast backend.
  *
  * Everything lives behind the {@link Store} interface so a real database
  * (Postgres, Redis, …) can be slotted in later without touching route code.
