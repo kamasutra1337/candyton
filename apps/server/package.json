@@ -1,0 +1,24 @@
+{
+  "name": "@candyton/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "CandyTON server-authoritative Match-3 backend (anti-cheat re-simulation).",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@candyton/engine": "file:../../packages/engine",
+    "@fastify/cors": "^10.0.1",
+    "fastify": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
