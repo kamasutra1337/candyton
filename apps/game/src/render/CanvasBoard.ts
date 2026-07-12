@@ -4,8 +4,11 @@ import { styleFor } from './palette';
 interface Sprite {
   color: number;
   special: SpecialType | null;
-  x: number; // centre px
-  y: number; // centre px
+  x: number; // centre px (layout-correct)
+  y: number; // centre px (layout-correct)
+  /** Transient draw-time vertical offset (intro cascade). Decoupled from layout
+   *  so a resize can never fight an in-flight animation. */
+  oy: number;
   scale: number;
   alpha: number;
 }
@@ -146,7 +149,7 @@ export class CanvasBoard {
     this.grid = board.cells.map((row, r) =>
       row.map((t, c) =>
         t
-          ? { color: t.color, special: t.special, ...this.centre(r, c), scale: 1, alpha: 1 }
+          ? { color: t.color, special: t.special, ...this.centre(r, c), oy: 0, scale: 1, alpha: 1 }
           : null,
       ),
     );
@@ -163,9 +166,10 @@ export class CanvasBoard {
       for (let c = 0; c < this.cols; c++) {
         const s = this.grid[r]?.[c];
         if (!s) continue;
-        const targetY = s.y;
-        s.y = this.originY - this.cell; // start just above the board (off-screen)
-        anims.push(this.tween((v) => (s.y = v), s.y, targetY, 360, easeOutCubic, r * 12 + c * 24));
+        // Animate a pure vertical OFFSET down to 0 — layout-independent, so a
+        // resize mid-cascade can never leave the board misaligned.
+        s.oy = -((r + 2) * this.cell + 40);
+        anims.push(this.tween((v) => (s.oy = v), s.oy, 0, 360, easeOutCubic, r * 12 + c * 24));
       }
     }
     void Promise.all(anims).then(() => {
@@ -366,7 +370,7 @@ export class CanvasBoard {
       const p = cr.pos;
       const existing = this.grid[p.r]?.[p.c];
       const sprite: Sprite =
-        existing ?? { color: cr.color, special: null, ...this.centre(p.r, p.c), scale: 0, alpha: 1 };
+        existing ?? { color: cr.color, special: null, ...this.centre(p.r, p.c), oy: 0, scale: 0, alpha: 1 };
       sprite.color = cr.color;
       sprite.special = cr.special;
       sprite.alpha = 1;
@@ -476,6 +480,7 @@ export class CanvasBoard {
         special: sp.tile.special,
         x: target.x,
         y: target.y - (sp.to.r + 1.5) * this.cell,
+        oy: 0,
         scale: 1,
         alpha: 1,
       };
@@ -613,37 +618,39 @@ export class CanvasBoard {
     const ctx = this.ctx;
     const rad = (this.cell / 2 - 4) * s.scale;
     if (rad <= 0) return;
+    const x = s.x;
+    const y = s.y + s.oy;
     ctx.save();
     ctx.globalAlpha = s.alpha;
     const style = styleFor(s.color);
 
     if (s.special === 'colorBomb') {
-      const g = ctx.createRadialGradient(s.x - rad / 3, s.y - rad / 3, rad / 6, s.x, s.y, rad);
+      const g = ctx.createRadialGradient(x - rad / 3, y - rad / 3, rad / 6, x, y, rad);
       g.addColorStop(0, '#ffffff');
       g.addColorStop(0.4, '#b56bff');
       g.addColorStop(0.7, '#3b8bff');
       g.addColorStop(1, '#ff3b6b');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, rad, 0, Math.PI * 2);
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
       return;
     }
 
     // Candy body: rounded gem with a vertical gradient + glossy highlight.
-    const g = ctx.createLinearGradient(s.x, s.y - rad, s.x, s.y + rad);
+    const g = ctx.createLinearGradient(x, y - rad, x, y + rad);
     g.addColorStop(0, style.light);
     g.addColorStop(0.5, style.base);
     g.addColorStop(1, style.dark);
     ctx.fillStyle = g;
-    this.roundRect(s.x - rad, s.y - rad, rad * 2, rad * 2, rad * 0.4);
+    this.roundRect(x - rad, y - rad, rad * 2, rad * 2, rad * 0.4);
     ctx.fill();
 
     // Gloss.
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.beginPath();
-    ctx.ellipse(s.x - rad * 0.3, s.y - rad * 0.4, rad * 0.4, rad * 0.22, -0.5, 0, Math.PI * 2);
+    ctx.ellipse(x - rad * 0.3, y - rad * 0.4, rad * 0.4, rad * 0.22, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Striped overlay.
@@ -653,11 +660,11 @@ export class CanvasBoard {
       ctx.beginPath();
       for (let i = -1; i <= 1; i++) {
         if (s.special === 'stripedH') {
-          ctx.moveTo(s.x - rad, s.y + i * rad * 0.5);
-          ctx.lineTo(s.x + rad, s.y + i * rad * 0.5);
+          ctx.moveTo(x - rad, y + i * rad * 0.5);
+          ctx.lineTo(x + rad, y + i * rad * 0.5);
         } else {
-          ctx.moveTo(s.x + i * rad * 0.5, s.y - rad);
-          ctx.lineTo(s.x + i * rad * 0.5, s.y + rad);
+          ctx.moveTo(x + i * rad * 0.5, y - rad);
+          ctx.lineTo(x + i * rad * 0.5, y + rad);
         }
       }
       ctx.stroke();
@@ -667,7 +674,7 @@ export class CanvasBoard {
     if (s.special === 'wrapped') {
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.lineWidth = Math.max(2, rad * 0.18);
-      this.roundRect(s.x - rad * 0.72, s.y - rad * 0.72, rad * 1.44, rad * 1.44, rad * 0.3);
+      this.roundRect(x - rad * 0.72, y - rad * 0.72, rad * 1.44, rad * 1.44, rad * 0.3);
       ctx.stroke();
     }
 
@@ -676,7 +683,7 @@ export class CanvasBoard {
     ctx.font = `${Math.floor(rad * 0.8)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(style.symbol, s.x, s.y + rad * 0.05);
+    ctx.fillText(style.symbol, x, y + rad * 0.05);
     ctx.restore();
   }
 
