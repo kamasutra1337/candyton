@@ -10,7 +10,17 @@ import type { Pos } from '@candyton/engine';
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 let token: string | null = null;
 
-export const apiEnabled = (): boolean => BASE.length > 0;
+/**
+ * Enabled when there is a backend to talk to. An explicit VITE_API_URL always
+ * wins. Otherwise we assume a same-origin API (e.g. the single Railway service
+ * that serves both this app and the API) — except on GitHub Pages, which is a
+ * static-only mirror with no backend.
+ */
+export const apiEnabled = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  if (BASE) return true;
+  return !window.location.hostname.endsWith('github.io');
+};
 
 async function call<T>(path: string, body?: unknown, auth = false): Promise<T | null> {
   if (!apiEnabled()) return null;

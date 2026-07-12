@@ -9,6 +9,9 @@
 
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
+import fstatic from '@fastify/static';
+import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 
 import { InMemoryStore, type Player, type Store } from './store.js';
 import { TokenAuth, bearerFromHeader, verifyTelegramInitData } from './auth.js';
@@ -180,6 +183,24 @@ export function buildServer(opts: BuildOptions = {}): FastifyInstance {
     const limit = parseLimit(req.query.limit);
     return { entries: store.globalLeaderboard(limit) };
   });
+
+  // --- static frontend ----------------------------------------------------
+  // When a built client is present (e.g. on Railway), serve it from the same
+  // origin as the API. Declared API routes above take precedence over the
+  // static wildcard, so nothing here shadows an endpoint. Skipped in tests /
+  // when no build exists.
+  const frontendDir =
+    process.env.FRONTEND_DIR ?? fileURLToPath(new URL('../../game/dist', import.meta.url));
+  if (existsSync(frontendDir)) {
+    app.register(fstatic, { root: frontendDir });
+    // SPA fallback: any unmatched GET serves index.html.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api')) {
+        return reply.type('text/html').sendFile('index.html');
+      }
+      return reply.code(404).send({ error: 'not found' });
+    });
+  }
 
   return app;
 }

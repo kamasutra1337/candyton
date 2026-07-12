@@ -5,15 +5,17 @@
   "description": "CandyTON — Web3 Match-3 Telegram Mini App on TON",
   "workspaces": [
     "packages/*",
-    "apps/game"
+    "apps/game",
+    "apps/server"
   ],
   "scripts": {
     "test": "npm run test --workspace @candyton/engine",
     "dev": "npm run dev --workspace @candyton/game",
-    "build": "npm run build --workspace @candyton/engine && npm run build --workspace @candyton/game",
+    "build": "npm run build --workspace @candyton/game",
+    "start": "npm start --workspace @candyton/server",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   }
 }
