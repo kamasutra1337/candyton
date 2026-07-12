@@ -1,5 +1,6 @@
 import type { GameState, LevelConfig } from '@candyton/engine';
 import { objectiveLabel, progressText } from './objectives';
+import { useCountUp } from './useCountUp';
 
 interface Props {
   level: LevelConfig;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function HUD({ level, state, onBack, onHint }: Props) {
+  const shownScore = useCountUp(state.score);
   return (
     <div className="hud">
       <div className="hud-top">
@@ -27,7 +29,7 @@ export function HUD({ level, state, onBack, onHint }: Props) {
       <div className="hud-stats">
         <div className="stat">
           <span className="stat-label">Score</span>
-          <span className="stat-value">{state.score.toLocaleString()}</span>
+          <span className="stat-value">{shownScore.toLocaleString()}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Moves</span>

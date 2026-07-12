@@ -16,7 +16,7 @@ export function LevelMap() {
         level.
       </p>
       <div className="level-grid">
-        {LEVELS.map((lvl) => {
+        {LEVELS.map((lvl, i) => {
           const locked = lvl.id > unlocked;
           const best = bestScores[lvl.id];
           const s = stars[lvl.id] ?? 0;
@@ -24,6 +24,7 @@ export function LevelMap() {
             <button
               key={lvl.id}
               className={`level-card ${locked ? 'locked' : ''} ${best ? 'cleared' : ''}`}
+              style={{ animationDelay: `${i * 0.045}s` }}
               disabled={locked}
               onClick={() => {
                 sfx.unlock();

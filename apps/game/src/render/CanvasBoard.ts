@@ -375,6 +375,7 @@ export class CanvasBoard {
       sprite.special = cr.special;
       sprite.alpha = 1;
       this.grid[p.r]![p.c] = sprite;
+      this.fx.push({ type: 'ring', r: p.r, c: p.c, life: 380, max: 380 }); // birth flare
       anims.push(this.tween((v) => (sprite.scale = v), 0.3, 1, 220, easeOutBack));
     }
     await Promise.all(anims);
@@ -471,7 +472,9 @@ export class CanvasBoard {
       this.grid[f.to.r]![f.to.c] = s;
       const target = this.centre(f.to.r, f.to.c);
       const dist = Math.abs(f.to.r - f.from.r);
-      anims.push(this.tween((v) => (s.y = v), s.y, target.y, 90 + dist * 45, easeOutCubic));
+      const p = this.tween((v) => (s.y = v), s.y, target.y, 90 + dist * 45, easeOutCubic);
+      anims.push(p);
+      void p.then(() => this.landBounce(s)); // squash on impact, non-blocking
     }
     for (const sp of step.spawns) {
       const target = this.centre(sp.to.r, sp.to.c);
@@ -485,9 +488,18 @@ export class CanvasBoard {
         alpha: 1,
       };
       this.grid[sp.to.r]![sp.to.c] = sprite;
-      anims.push(this.tween((v) => (sprite.y = v), sprite.y, target.y, 260, easeOutCubic));
+      const p = this.tween((v) => (sprite.y = v), sprite.y, target.y, 260, easeOutCubic);
+      anims.push(p);
+      void p.then(() => this.landBounce(sprite));
     }
     await Promise.all(anims);
+  }
+
+  /** Quick squash-and-settle when a candy lands. Fire-and-forget. */
+  private landBounce(s: Sprite): void {
+    void this.tween((v) => (s.scale = v), 1, 1.12, 70).then(() =>
+      this.tween((v) => (s.scale = v), 1.12, 1, 110, easeOutBack),
+    );
   }
 
   // --- drawing ------------------------------------------------------------
@@ -535,10 +547,14 @@ export class CanvasBoard {
       }
     }
 
+    // Gentle idle "breathing" so the board feels alive between moves.
+    const idle = !this.busy && this.tweens.length === 0;
     for (let r = 0; r < this.rows; r++)
       for (let c = 0; c < this.cols; c++) {
         const s = this.grid[r]?.[c];
-        if (s) this.drawSprite(s);
+        if (!s) continue;
+        const bob = idle ? Math.sin(this.now / 620 + (r + c) * 0.55) * 1.8 : 0;
+        this.drawSprite(s, bob);
       }
 
     // Detonation FX beneath the popping candies for a layered look.
@@ -614,12 +630,12 @@ export class CanvasBoard {
     ctx.globalAlpha = 1;
   }
 
-  private drawSprite(s: Sprite): void {
+  private drawSprite(s: Sprite, extraOy = 0): void {
     const ctx = this.ctx;
     const rad = (this.cell / 2 - 4) * s.scale;
     if (rad <= 0) return;
     const x = s.x;
-    const y = s.y + s.oy;
+    const y = s.y + s.oy + extraOy;
     ctx.save();
     ctx.globalAlpha = s.alpha;
     const style = styleFor(s.color);

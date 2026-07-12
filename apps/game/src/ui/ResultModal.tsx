@@ -1,3 +1,5 @@
+import { Confetti } from './Confetti';
+
 interface Props {
   won: boolean;
   score: number;
@@ -10,6 +12,7 @@ interface Props {
 export function ResultModal({ won, score, earned, stars, onMap, onReplay }: Props) {
   return (
     <div className="modal-backdrop">
+      {won && <Confetti />}
       <div className={`modal ${won ? 'win' : 'lose'}`}>
         <div className="modal-emoji">{won ? '🎉' : '💔'}</div>
         <h2>{won ? 'Level Cleared!' : 'Out of Moves'}</h2>
