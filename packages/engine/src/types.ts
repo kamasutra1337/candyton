@@ -1,8 +1,8 @@
 /**
- * Core domain types for the CandyTON Match-3 engine.
+ * Core domain types for the CandyBlast Match-3 engine.
  *
- * The engine is pure: it knows nothing about rendering, networking or the
- * blockchain. Everything it produces is plain serialisable data so the same
+ * The engine is pure: it knows nothing about rendering or networking.
+ * Everything it produces is plain serialisable data so the same
  * logic can run on the client for responsiveness and on the server for
  * authoritative anti-cheat validation.
  */

@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from 'vitest';
-import { Match3Engine, findHint, getLevel, type Board, type Pos } from '@candyton/engine';
+import { Match3Engine, findHint, getLevel, type Board, type Pos } from '@candyblast/engine';
 import { CanvasBoard } from '../src/render/CanvasBoard';
 
 /**

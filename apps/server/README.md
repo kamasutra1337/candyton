@@ -1,18 +1,18 @@
-# @candyton/server — Match-3 backend
+# @candyblast/server — Match-3 backend
 
-A small, self-contained backend for the CandyTON Match-3 game whose headline
+A small, self-contained backend for the CandyBlast game whose headline
 feature is **server-authoritative anti-cheat**: the server never trusts a
 client-reported score. It re-simulates the player's move list with the shared
 game engine and computes the score itself.
 
 > This is a **standalone** package with its own `node_modules`. It is **not** a
 > workspace member — install and run it from inside `apps/server`, separately
-> from the repo root. **TON / blockchain is intentionally out of scope** here;
-> this is a plain game backend. Storage is **in-memory** and pluggable.
+> from the repo root. This is a plain game backend — storage is **in-memory**
+> and pluggable.
 
 ## Anti-cheat design (deterministic re-simulation)
 
-The engine (`@candyton/engine`) is pure and **seeded**, so a given level plus a
+The engine (`@candyblast/engine`) is pure and **seeded**, so a given level plus a
 given ordered list of swaps always produces the exact same board evolution and
 score. The client therefore submits only the *inputs* — `{ levelId, moves }` —
 and the server owns the *outputs*:
@@ -70,7 +70,7 @@ Environment:
 - `BOT_TOKEN` — Telegram bot token, only needed for `/auth/telegram`
 
 Runs directly via `tsx` — no build step. The engine is imported as a `file:`
-dependency (`@candyton/engine`) and executed straight from its TypeScript
+dependency (`@candyblast/engine`) and executed straight from its TypeScript
 source, guaranteeing the server's rules can never drift from the client's.
 
 ## Testing

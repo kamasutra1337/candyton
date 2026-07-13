@@ -9,7 +9,7 @@
  * is irrelevant to what we store — at most it is compared for a cheat flag.
  */
 
-import { Match3Engine, getLevel, starsForScore } from '@candyton/engine';
+import { Match3Engine, getLevel, starsForScore } from '@candyblast/engine';
 
 export interface Move {
   a: { r: number; c: number };

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { GameState } from '@candyton/engine';
-import { LEVELS, getLevel, starsForScore } from '@candyton/engine';
+import type { GameState } from '@candyblast/engine';
+import { LEVELS, getLevel, starsForScore } from '@candyblast/engine';
 import { telegramUser } from '../platform/telegram';
 
 export type Screen = 'home' | 'map' | 'game' | 'leaderboard' | 'roulette';
@@ -119,6 +119,6 @@ export const useStore = create<AppState>()(
       chooseLang: (lang) => set({ lang, langChosen: true }),
       openLangPicker: () => set({ langChosen: false }),
     }),
-    { name: 'candyton-progress' },
+    { name: 'candyblast-progress' },
   ),
 );

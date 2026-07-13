@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { Match3Engine, getLevel, findHint } from '@candyton/engine';
+import { Match3Engine, getLevel, findHint } from '@candyblast/engine';
 
 import { buildServer } from '../src/server.js';
 import { simulate, type Move } from '../src/scoring.js';
@@ -30,7 +30,7 @@ async function authDev(app: FastifyInstance, name: string): Promise<string> {
   return res.json().token as string;
 }
 
-describe('CandyTON server-authoritative backend', () => {
+describe('CandyBlast server-authoritative backend', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {

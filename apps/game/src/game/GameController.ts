@@ -6,7 +6,7 @@ import {
   type LevelConfig,
   type Pos,
   type Step,
-} from '@candyton/engine';
+} from '@candyblast/engine';
 import { CanvasBoard } from '../render/CanvasBoard';
 import { haptic } from '../platform/telegram';
 import { sfx } from '../audio/sfx';
@@ -114,6 +114,16 @@ export class GameController {
     this.engine.grantMoves(n);
     sfx.play('coin');
     this.onState(this.engine.getState());
+  }
+
+  /** Freezes the board (blocks further input) — used when the duel timer ends. */
+  stop(): void {
+    this.finished = true;
+  }
+
+  /** Current authoritative score. */
+  getScore(): number {
+    return this.engine.getState().score;
   }
 
   resize(): void {

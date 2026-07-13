@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getLevel, type GameState } from '@candyton/engine';
+import { getLevel, type GameState } from '@candyblast/engine';
 import { GameController, type RecordedMove } from '../game/GameController';
 import { useStore } from '../state/store';
 import { submitRun } from '../net/api';

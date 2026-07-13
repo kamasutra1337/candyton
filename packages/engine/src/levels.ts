@@ -63,9 +63,9 @@ export function getLevel(id: number): LevelConfig | undefined {
 
 /**
  * A head-to-head duel board. Both players build the identical board from the
- * same `seed` and race for the highest score within the move limit. The score
- * target is unreachable so play always runs to the last move — the final score
- * is what decides the duel.
+ * same `seed` and race for the highest score against a 90-second clock (not a
+ * move limit) — the wall-clock timer is owned by the client, so moves are
+ * effectively unlimited and the score target is unreachable.
  */
 export function duelLevel(seed: number): LevelConfig {
   return {
@@ -74,12 +74,15 @@ export function duelLevel(seed: number): LevelConfig {
     rows: 8,
     cols: 8,
     colors: 6,
-    moves: 20,
+    moves: 999,
     seed: seed >>> 0,
     objectives: [{ kind: 'score', target: Number.MAX_SAFE_INTEGER }],
     starScores: [3000, 6000, 10000],
   };
 }
+
+/** Duel round length in seconds. */
+export const DUEL_SECONDS = 90;
 
 /** Star rating (0–3) for a score, using the level's thresholds. */
 export function starsForScore(level: LevelConfig, score: number): number {

@@ -1152,3 +1152,64 @@ body::after {
 .rl-dare.win {
   color: var(--good);
 }
+
+/* Duel timer bar (over the video) */
+.rl-timerbar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-weight: 800;
+  font-size: 16px;
+  backdrop-filter: blur(4px);
+}
+.rl-timer.danger {
+  color: var(--danger);
+  animation: dangerPulse 0.8s ease-in-out infinite;
+}
+.rl-livescore {
+  color: var(--gold);
+}
+
+/* Result bottom sheet — keeps the video visible for the on-camera dare */
+.rl-result {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 25;
+  max-width: 560px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(39, 22, 66, 0.96), rgba(27, 16, 48, 0.98));
+  border-top: 1px solid var(--panel-border);
+  border-radius: 22px 22px 0 0;
+  padding: 16px 18px calc(18px + var(--safe-bottom));
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+  animation: sheetUp 0.32s cubic-bezier(0.2, 1, 0.3, 1);
+}
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.rl-result.win { border-top-color: rgba(255, 210, 87, 0.5); }
+.rl-result.lose { border-top-color: rgba(255, 90, 110, 0.5); }
+.rl-result-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rl-result-emoji { font-size: 30px; }
+.rl-result-title { font-weight: 800; font-size: 19px; flex: 1; }
+.rl-result-score { font-weight: 800; color: var(--gold); font-size: 17px; }
+.rl-result-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.rl-result-actions .btn { flex: 1; }

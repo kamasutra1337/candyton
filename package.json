@@ -1,18 +1,18 @@
 {
-  "name": "candyton",
+  "name": "candyblast",
   "private": true,
   "version": "0.1.0",
-  "description": "CandyTON — Web3 Match-3 Telegram Mini App on TON",
+  "description": "CandyBlast — video wish-duel roulette Telegram Mini App",
   "workspaces": [
     "packages/*",
     "apps/game",
     "apps/server"
   ],
   "scripts": {
-    "test": "npm run test --workspace @candyton/engine",
-    "dev": "npm run dev --workspace @candyton/game",
-    "build": "npm run build --workspace @candyton/game",
-    "start": "npm start --workspace @candyton/server",
+    "test": "npm run test --workspace @candyblast/engine",
+    "dev": "npm run dev --workspace @candyblast/game",
+    "build": "npm run build --workspace @candyblast/game",
+    "start": "npm start --workspace @candyblast/server",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {

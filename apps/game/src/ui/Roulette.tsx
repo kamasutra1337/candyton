@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { duelLevel, type GameState } from '@candyton/engine';
+import { duelLevel, DUEL_SECONDS, type GameState } from '@candyblast/engine';
 import { GameController } from '../game/GameController';
 import { DuelNet, type DuelPhase, type DuelResult } from '../duel/net';
 import { useStore } from '../state/store';
 import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';
+
+const fmt = (s: number): string => `${Math.floor(s / 60)}:${String(Math.max(0, s % 60)).padStart(2, '0')}`;
 
 export function Roulette() {
   const t = useT();
@@ -17,6 +19,7 @@ export function Roulette() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<GameController | null>(null);
   const myWishRef = useRef('');
+  const timerRef = useRef<number | null>(null);
 
   const [phase, setPhase] = useState<DuelPhase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +28,13 @@ export function Roulette() {
   const [wishSent, setWishSent] = useState(false);
   const [wish, setWish] = useState('');
   const [live, setLive] = useState<GameState | null>(null);
+  const [timeLeft, setTimeLeft] = useState(DUEL_SECONDS);
   const [result, setResult] = useState<DuelResult | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current != null) window.clearInterval(timerRef.current);
+    timerRef.current = null;
+  };
 
   // Create the net manager once.
   useEffect(() => {
@@ -45,40 +54,61 @@ export function Roulette() {
       setWish('');
       setResult(null);
       setLive(null);
+      setTimeLeft(DUEL_SECONDS);
       sfx.play('special');
     };
     net.onResult = (r) => {
+      clearTimer();
       setResult(r);
       sfx.play(r.outcome === 'win' ? 'win' : r.outcome === 'lose' ? 'lose' : 'coin');
     };
     net.onPeerLeft = () => {
+      clearTimer();
       controllerRef.current?.destroy();
       controllerRef.current = null;
       setError(t('duel.peerLeft'));
       setPhase('idle');
     };
-    return () => net.destroy();
+    return () => {
+      clearTimer();
+      net.destroy();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Start the duel board once a match is live and the wish is submitted.
+  // Camera turns on and matchmaking starts automatically on entry.
+  useEffect(() => {
+    void start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Start the duel board + 90s clock once matched and the wish is submitted.
   useEffect(() => {
     if (phase !== 'connecting' && phase !== 'playing') return;
     if (!wishSent || !canvasRef.current || controllerRef.current) return;
     const net = netRef.current!;
-    const controller = new GameController(
-      duelLevel(seed),
-      canvasRef.current,
-      setLive,
-      (s) => {
-        net.sendScore(s.score);
-      },
-    );
+    const controller = new GameController(duelLevel(seed), canvasRef.current, setLive, () => {});
     controllerRef.current = controller;
+
+    setTimeLeft(DUEL_SECONDS);
+    timerRef.current = window.setInterval(() => {
+      setTimeLeft((tl) => {
+        if (tl <= 1) {
+          clearTimer();
+          controller.stop();
+          net.sendScore(controller.getScore());
+          return 0;
+        }
+        if (tl <= 11) sfx.play('click');
+        return tl - 1;
+      });
+    }, 1000);
+
     const onResize = () => controller.resize();
     window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('resize', onResize);
+      clearTimer();
       controller.destroy();
       controllerRef.current = null;
     };
@@ -87,11 +117,13 @@ export function Roulette() {
   const start = async () => {
     setError(null);
     sfx.unlock();
-    const net = netRef.current!;
+    const net = netRef.current;
+    if (!net) return;
     try {
       await net.initMedia();
     } catch {
       setError(t('duel.camDenied'));
+      setPhase('idle');
       return;
     }
     net.join(resolveName());
@@ -106,22 +138,26 @@ export function Roulette() {
 
   const nextOpponent = () => {
     sfx.play('click');
+    clearTimer();
     controllerRef.current?.destroy();
     controllerRef.current = null;
     setResult(null);
     setLive(null);
     setWishSent(false);
+    setTimeLeft(DUEL_SECONDS);
     netRef.current!.next();
   };
 
   const quit = () => {
+    clearTimer();
     controllerRef.current?.destroy();
     controllerRef.current = null;
     netRef.current!.leave();
     openHome();
   };
 
-  const connected = phase === 'connecting' || phase === 'playing' || phase === 'waiting' || phase === 'result';
+  const connected =
+    phase === 'connecting' || phase === 'playing' || phase === 'waiting' || phase === 'result';
 
   return (
     <div className="roulette">
@@ -146,36 +182,35 @@ export function Roulette() {
             )}
           </div>
         )}
-        {connected && <div className="rl-peer-name">{peerName}</div>}
+        {connected && peerName && <div className="rl-peer-name">{peerName}</div>}
+        {/* Live duel HUD: timer + score */}
+        {connected && wishSent && !result && (
+          <div className="rl-timerbar">
+            <span className={`rl-timer ${timeLeft <= 10 ? 'danger' : ''}`}>⏱ {fmt(timeLeft)}</span>
+            <span className="rl-livescore">🎯 {(live?.score ?? 0).toLocaleString()}</span>
+          </div>
+        )}
         <video ref={localVideo} className="rl-local" autoPlay playsInline muted />
       </div>
 
-      {/* Duel board area */}
+      {/* Duel board */}
       {connected && (
         <div className="rl-board-wrap">
-          {live && (
-            <div className="rl-hud">
-              <span>🎯 {live.score.toLocaleString()}</span>
-              <span className={live.movesLeft <= 3 ? 'danger' : ''}>♟ {live.movesLeft}</span>
-            </div>
-          )}
           <canvas ref={canvasRef} className="rl-canvas" />
         </div>
       )}
 
-      {/* Idle / start */}
+      {/* Idle / camera denied */}
       {phase === 'idle' && (
         <div className="rl-idle">
           <p className="rl-lead">{t('duel.lead')}</p>
           {error && <p className="rl-error">{error}</p>}
-          <button className="btn primary rl-start" onClick={start}>
-            🎥 {t('duel.start')}
-          </button>
+          <button className="btn primary rl-start" onClick={start}>🎥 {t('duel.start')}</button>
           <p className="rl-note">{t('duel.camNote')}</p>
         </div>
       )}
 
-      {/* Wish input overlay after match */}
+      {/* Wish input (before the game) */}
       {connected && !wishSent && (
         <div className="modal-backdrop">
           <div className="modal">
@@ -188,6 +223,7 @@ export function Roulette() {
               onChange={(e) => setWish(e.target.value)}
               maxLength={200}
               placeholder={t('duel.wishPlaceholder')}
+              autoFocus
             />
             <button className="btn primary" onClick={submitWish} disabled={!wish.trim()}>
               {t('duel.wishGo')}
@@ -196,7 +232,7 @@ export function Roulette() {
         </div>
       )}
 
-      {/* Waiting for opponent's score */}
+      {/* Waiting for opponent to finish */}
       {phase === 'waiting' && !result && (
         <div className="modal-backdrop">
           <div className="modal">
@@ -206,37 +242,33 @@ export function Roulette() {
         </div>
       )}
 
-      {/* Result */}
+      {/* Result — a bottom sheet so the video stays visible for the on-camera dare */}
       {result && (
-        <div className="modal-backdrop">
-          <div className={`modal ${result.outcome === 'win' ? 'win' : result.outcome === 'lose' ? 'lose' : ''}`}>
-            <div className="modal-emoji">
+        <div className={`rl-result ${result.outcome}`}>
+          <div className="rl-result-head">
+            <span className="rl-result-emoji">
               {result.outcome === 'win' ? '🏆' : result.outcome === 'lose' ? '😅' : '🤝'}
-            </div>
-            <h2>
+            </span>
+            <span className="rl-result-title">
               {result.outcome === 'win'
                 ? t('duel.win')
                 : result.outcome === 'lose'
                   ? t('duel.lose')
                   : t('duel.draw')}
-            </h2>
-            <p className="modal-score">
+            </span>
+            <span className="rl-result-score">
               {result.myScore.toLocaleString()} : {result.oppScore.toLocaleString()}
-            </p>
-            {result.outcome === 'win' && myWishRef.current && (
-              <p className="rl-dare win">
-                {t('duel.oppMust')}: <b>{myWishRef.current}</b>
-              </p>
-            )}
-            {result.outcome === 'lose' && result.dare && (
-              <p className="rl-dare">
-                {t('duel.youMust')}: <b>{result.dare}</b>
-              </p>
-            )}
-            <div className="modal-actions">
-              <button className="btn ghost" onClick={quit}>{t('duel.exit')}</button>
-              <button className="btn primary" onClick={nextOpponent}>{t('duel.next')}</button>
-            </div>
+            </span>
+          </div>
+          {result.outcome === 'win' && myWishRef.current && (
+            <p className="rl-dare win">🎥 {t('duel.oppMust')}: <b>{myWishRef.current}</b></p>
+          )}
+          {result.outcome === 'lose' && result.dare && (
+            <p className="rl-dare">🎥 {t('duel.youMust')}: <b>{result.dare}</b></p>
+          )}
+          <div className="rl-result-actions">
+            <button className="btn ghost" onClick={quit}>{t('duel.exit')}</button>
+            <button className="btn primary" onClick={nextOpponent}>{t('duel.next')}</button>
           </div>
         </div>
       )}

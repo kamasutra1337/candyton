@@ -5,7 +5,7 @@
  * re-simulate and post an authoritative leaderboard score. Every call fails
  * silently; nothing here can break gameplay.
  */
-import type { Pos } from '@candyton/engine';
+import type { Pos } from '@candyblast/engine';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 let token: string | null = null;

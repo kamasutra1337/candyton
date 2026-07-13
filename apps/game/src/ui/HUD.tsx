@@ -1,4 +1,4 @@
-import type { GameState, LevelConfig } from '@candyton/engine';
+import type { GameState, LevelConfig } from '@candyblast/engine';
 import { objectiveLabel, progressText } from './objectives';
 import { useCountUp } from './useCountUp';
 import { useT } from '../i18n';

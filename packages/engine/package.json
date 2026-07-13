@@ -1,7 +1,7 @@
 {
-  "name": "@candyton/engine",
+  "name": "@candyblast/engine",
   "version": "0.1.0",
-  "description": "Pure TypeScript Match-3 game engine — no UI, no network, no blockchain.",
+  "description": "Pure TypeScript Match-3 game engine — no UI, no network.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

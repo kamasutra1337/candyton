@@ -1,4 +1,4 @@
-import { CHAPTERS, LEVELS } from '@candyton/engine';
+import { CHAPTERS, LEVELS } from '@candyblast/engine';
 import { useStore } from '../state/store';
 import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';

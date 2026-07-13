@@ -1,5 +1,5 @@
 {
-  "name": "@candyton/game",
+  "name": "@candyblast/game",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@candyton/engine": "*",
+    "@candyblast/engine": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.2"

@@ -1,4 +1,4 @@
-import type { Objective, ObjectiveProgress } from '@candyton/engine';
+import type { Objective, ObjectiveProgress } from '@candyblast/engine';
 import { CANDY_STYLES } from '../render/palette';
 import type { TFn } from '../i18n';
 

@@ -1,4 +1,4 @@
-import type { Board, Pos, SpecialType, Step } from '@candyton/engine';
+import type { Board, Pos, SpecialType, Step } from '@candyblast/engine';
 import { styleFor } from './palette';
 
 interface Sprite {
