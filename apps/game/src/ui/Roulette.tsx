@@ -6,7 +6,10 @@ import { useStore } from '../state/store';
 import { useT } from '../i18n';
 import { sfx } from '../audio/sfx';
 
+const DISCUSS_SECONDS = 20;
 const fmt = (s: number): string => `${Math.floor(s / 60)}:${String(Math.max(0, s % 60)).padStart(2, '0')}`;
+
+type Stage = 'lobby' | 'discuss' | 'wish' | 'game';
 
 export function Roulette() {
   const t = useT();
@@ -22,12 +25,15 @@ export function Roulette() {
   const timerRef = useRef<number | null>(null);
 
   const [phase, setPhase] = useState<DuelPhase>('idle');
+  const [stage, setStage] = useState<Stage>('lobby');
   const [error, setError] = useState<string | null>(null);
   const [seed, setSeed] = useState(0);
   const [peerName, setPeerName] = useState('');
-  const [wishSent, setWishSent] = useState(false);
-  const [wish, setWish] = useState('');
+  const [wish, setWish] = useState(
+    () => new URLSearchParams(location.search).get('wish')?.slice(0, 200) ?? '',
+  );
   const [live, setLive] = useState<GameState | null>(null);
+  const [discussLeft, setDiscussLeft] = useState(DISCUSS_SECONDS);
   const [timeLeft, setTimeLeft] = useState(DUEL_SECONDS);
   const [result, setResult] = useState<DuelResult | null>(null);
 
@@ -42,19 +48,25 @@ export function Roulette() {
     netRef.current = net;
     net.onPhase = setPhase;
     net.onLocalStream = (s) => {
-      if (localVideo.current) localVideo.current.srcObject = s;
+      if (localVideo.current) {
+        localVideo.current.srcObject = s;
+        void localVideo.current.play().catch(() => {});
+      }
     };
     net.onRemoteStream = (s) => {
-      if (remoteVideo.current) remoteVideo.current.srcObject = s;
+      if (remoteVideo.current) {
+        remoteVideo.current.srcObject = s;
+        void remoteVideo.current.play().catch(() => {}); // audible: not muted
+      }
     };
     net.onMatched = (sd, pn) => {
       setSeed(sd);
       setPeerName(pn);
-      setWishSent(false);
-      setWish('');
       setResult(null);
       setLive(null);
       setTimeLeft(DUEL_SECONDS);
+      setDiscussLeft(DISCUSS_SECONDS);
+      setStage('discuss');
       sfx.play('special');
     };
     net.onResult = (r) => {
@@ -67,6 +79,7 @@ export function Roulette() {
       controllerRef.current?.destroy();
       controllerRef.current = null;
       setError(t('duel.peerLeft'));
+      setStage('lobby');
       setPhase('idle');
     };
     return () => {
@@ -76,21 +89,38 @@ export function Roulette() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Camera turns on and matchmaking starts automatically on entry.
+  // Camera on + matchmaking automatically on entry.
   useEffect(() => {
     void start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Start the duel board + 90s clock once matched and the wish is submitted.
+  // 20s discussion countdown → then the wish window.
   useEffect(() => {
-    if (phase !== 'connecting' && phase !== 'playing') return;
-    if (!wishSent || !canvasRef.current || controllerRef.current) return;
+    if (stage !== 'discuss') return;
+    clearTimer();
+    timerRef.current = window.setInterval(() => {
+      setDiscussLeft((d) => {
+        if (d <= 1) {
+          clearTimer();
+          sfx.play('coin');
+          setStage('wish');
+          return 0;
+        }
+        return d - 1;
+      });
+    }, 1000);
+    return clearTimer;
+  }, [stage]);
+
+  // Start the board + 90s clock when the wish is submitted (stage === 'game').
+  useEffect(() => {
+    if (stage !== 'game' || !canvasRef.current || controllerRef.current) return;
     const net = netRef.current!;
     const controller = new GameController(duelLevel(seed), canvasRef.current, setLive, () => {});
     controllerRef.current = controller;
-
     setTimeLeft(DUEL_SECONDS);
+    clearTimer();
     timerRef.current = window.setInterval(() => {
       setTimeLeft((tl) => {
         if (tl <= 1) {
@@ -103,7 +133,6 @@ export function Roulette() {
         return tl - 1;
       });
     }, 1000);
-
     const onResize = () => controller.resize();
     window.addEventListener('resize', onResize);
     return () => {
@@ -112,7 +141,7 @@ export function Roulette() {
       controller.destroy();
       controllerRef.current = null;
     };
-  }, [phase, wishSent, seed]);
+  }, [stage, seed]);
 
   const start = async () => {
     setError(null);
@@ -124,16 +153,18 @@ export function Roulette() {
     } catch {
       setError(t('duel.camDenied'));
       setPhase('idle');
+      setStage('lobby');
       return;
     }
-    net.join(resolveName());
+    const region = new URLSearchParams(location.search).get('region')?.slice(0, 64) ?? '';
+    net.join(resolveName(), region);
   };
 
   const submitWish = () => {
     sfx.play('click');
     myWishRef.current = wish.trim();
     netRef.current!.sendWish(myWishRef.current);
-    setWishSent(true);
+    setStage('game');
   };
 
   const nextOpponent = () => {
@@ -143,8 +174,7 @@ export function Roulette() {
     controllerRef.current = null;
     setResult(null);
     setLive(null);
-    setWishSent(false);
-    setTimeLeft(DUEL_SECONDS);
+    setStage('lobby');
     netRef.current!.next();
   };
 
@@ -156,20 +186,28 @@ export function Roulette() {
     openHome();
   };
 
-  const connected =
-    phase === 'connecting' || phase === 'playing' || phase === 'waiting' || phase === 'result';
+  const connected = phase === 'connecting' || phase === 'playing' || phase === 'waiting' || phase === 'result';
 
   return (
-    <div className="roulette">
+    <div className={`roulette stage-${connected ? stage : 'lobby'}`}>
       <div className="rl-top">
         <button className="icon-btn" onClick={quit} aria-label="Back">‹</button>
         <span className="rl-title">🎥 {t('duel.title')}</span>
         <span style={{ width: 40 }} />
       </div>
 
-      {/* Video stage */}
-      <div className={`rl-stage ${connected ? 'live' : ''}`}>
+      {/* Big game board (fills the screen during the game) */}
+      {connected && (
+        <div className="rl-board-wrap">
+          <canvas ref={canvasRef} className="rl-canvas" />
+        </div>
+      )}
+
+      {/* Camera tiles — big while discussing, small top-left during the game */}
+      <div className="rl-cams">
         <video ref={remoteVideo} className="rl-remote" autoPlay playsInline />
+        <video ref={localVideo} className="rl-local" autoPlay playsInline muted />
+        {connected && peerName && <div className="rl-peer-name">{peerName}</div>}
         {!connected && (
           <div className="rl-remote-placeholder">
             {phase === 'searching' ? (
@@ -182,21 +220,21 @@ export function Roulette() {
             )}
           </div>
         )}
-        {connected && peerName && <div className="rl-peer-name">{peerName}</div>}
-        {/* Live duel HUD: timer + score */}
-        {connected && wishSent && !result && (
-          <div className="rl-timerbar">
-            <span className={`rl-timer ${timeLeft <= 10 ? 'danger' : ''}`}>⏱ {fmt(timeLeft)}</span>
-            <span className="rl-livescore">🎯 {(live?.score ?? 0).toLocaleString()}</span>
-          </div>
-        )}
-        <video ref={localVideo} className="rl-local" autoPlay playsInline muted />
       </div>
 
-      {/* Duel board */}
-      {connected && (
-        <div className="rl-board-wrap">
-          <canvas ref={canvasRef} className="rl-canvas" />
+      {/* Timer + score during the game */}
+      {stage === 'game' && connected && !result && (
+        <div className="rl-timerbar">
+          <span className={`rl-timer ${timeLeft <= 10 ? 'danger' : ''}`}>⏱ {fmt(timeLeft)}</span>
+          <span className="rl-livescore">🎯 {(live?.score ?? 0).toLocaleString()}</span>
+        </div>
+      )}
+
+      {/* Discussion banner */}
+      {stage === 'discuss' && connected && (
+        <div className="rl-discuss">
+          <span className="rl-discuss-title">💬 {t('duel.discuss')}</span>
+          <span className="rl-discuss-timer">{discussLeft}</span>
         </div>
       )}
 
@@ -210,8 +248,8 @@ export function Roulette() {
         </div>
       )}
 
-      {/* Wish input (before the game) */}
-      {connected && !wishSent && (
+      {/* Wish window (pops after the 20s discussion) */}
+      {stage === 'wish' && connected && (
         <div className="modal-backdrop">
           <div className="modal">
             <div className="modal-emoji">💭</div>
@@ -242,7 +280,7 @@ export function Roulette() {
         </div>
       )}
 
-      {/* Result — a bottom sheet so the video stays visible for the on-camera dare */}
+      {/* Result — bottom sheet, video stays visible for the on-camera dare */}
       {result && (
         <div className={`rl-result ${result.outcome}`}>
           <div className="rl-result-head">
@@ -250,11 +288,7 @@ export function Roulette() {
               {result.outcome === 'win' ? '🏆' : result.outcome === 'lose' ? '😅' : '🤝'}
             </span>
             <span className="rl-result-title">
-              {result.outcome === 'win'
-                ? t('duel.win')
-                : result.outcome === 'lose'
-                  ? t('duel.lose')
-                  : t('duel.draw')}
+              {result.outcome === 'win' ? t('duel.win') : result.outcome === 'lose' ? t('duel.lose') : t('duel.draw')}
             </span>
             <span className="rl-result-score">
               {result.myScore.toLocaleString()} : {result.oppScore.toLocaleString()}

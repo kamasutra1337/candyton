@@ -82,8 +82,10 @@ export const useStore = create<AppState>()(
       resolveName: () => {
         const existing = get().playerName;
         if (existing) return existing;
+        // The Proxima portal passes the player's nickname via ?nick=.
+        const portalNick = new URLSearchParams(location.search).get('nick')?.slice(0, 24);
         const tg = telegramUser();
-        const name = tg?.name ?? `Guest ${1000 + Math.floor(Math.random() * 9000)}`;
+        const name = portalNick || tg?.name || `Guest ${1000 + Math.floor(Math.random() * 9000)}`;
         set({ playerName: name });
         return name;
       },

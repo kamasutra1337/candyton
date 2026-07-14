@@ -12,8 +12,33 @@ export interface DuelResult {
   dare: string;
 }
 
+// STUN discovers your public address; TURN relays media when a direct P2P path
+// is blocked by NAT/firewall (essential for real cross-network users). Uses the
+// free Open Relay TURN project — swap for your own (e.g. Metered) for scale.
+// Override at build time with VITE_TURN_URL / VITE_TURN_USER / VITE_TURN_CRED.
+const env = import.meta.env as Record<string, string | undefined>;
 const ICE: RTCConfiguration = {
-  iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }],
+  iceServers: [
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    ...(env.VITE_TURN_URL
+      ? [
+          {
+            urls: env.VITE_TURN_URL.split(','),
+            username: env.VITE_TURN_USER ?? '',
+            credential: env.VITE_TURN_CRED ?? '',
+          },
+        ]
+      : []),
+  ],
 };
 
 export class DuelNet {
@@ -54,14 +79,14 @@ export class DuelNet {
   }
 
   /** Connects (if needed) and enters the matchmaking queue. */
-  join(name: string): void {
+  join(name: string, region = ''): void {
     this.onPhase('searching');
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) {
-      this.send({ t: 'join', name });
+      this.send({ t: 'join', name, region });
       return;
     }
     this.ws = new WebSocket(this.wsUrl());
-    this.ws.onopen = () => this.send({ t: 'join', name });
+    this.ws.onopen = () => this.send({ t: 'join', name, region });
     this.ws.onmessage = (e) => this.onMessage(JSON.parse(e.data));
     this.ws.onclose = () => {};
   }
